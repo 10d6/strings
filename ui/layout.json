@@ -1,10 +1,7 @@
 {
   "theme": { "accent": "#8a4b2a" },
   "sections": [
-    { "title": "Oscillator", "controls": [ { "param": "osc.wave" } ] },
-    { "title": "Filter", "controls": [ { "param": "filter.cutoff", "size": "large" }, { "param": "filter.reso" } ] },
-    { "kit": "env1", "title": "Amp envelope" },
-    { "kit": "lfo1" },
+    { "kit": "lfo1", "title": "LFO", "info": "Route it to Pitch in the matrix for vibrato. The cello's recordings have none of their own." },
     { "kit": "modMatrix", "wide": true },
     { "kit": "voices" },
     { "kit": "master" }

@@ -43,6 +43,17 @@ from CI at milestones.
   note at 4.0 dB per harmonic (neighbour 7.6, other bow 3.1); rebuilt notes are 2.5 % from their
   recordings (other bow's spectrum 3.6, source × body for an unseen note 7.0, neighbour 13.0). Compare
   spectra with the envelope and onset shared: whole other takes measure a different performance.
+- **The engine** (`docs/MODEL.md`): `src/CelloData.h` is generated (`tools/analyze.py` →
+  `tools/cello.json` + `tools/cello_onsets.npz` → `tools/make_header.py`); never edit it by hand. A
+  note is the recorded onset (0.4 s, the nearest measured note transposed) crossfading at 0.30-0.40 s
+  into a harmonic bank started in phase with it (`handDb`/`handPh` at 0.35 s), then source × body
+  plus the measured notes' own corrections (fading over 3 semitones), octave-band bow noise, and a
+  release from the staccatos. After any change to the sound run `tools/measure.py` (3.0 % median
+  today; timbre 2.3; other bow 20.1) and `tools/handoff.py` (the render's extra dip at the hand-off:
+  median 0.2 dB), `--check`, and `stress.py` (`--keys 36-84` and the full range), and report them.
+- Lessons: anything stepped per `render` call must scale by its length (`exp(rate · n)`): the kit
+  checks blocks of 1 sample, and a per-call decay made notes end 32× faster; a key let go before the
+  hand-off must still hand over (from the decayed level), or the bank starts late at full level.
 - Analysis tools read the recordings from a path given on the command line; run them with
   `python3 -I` from outside the data directory.
 - Measure first, then model; where something can't be measured from these libraries (Bow Position,
