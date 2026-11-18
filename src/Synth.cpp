@@ -182,10 +182,11 @@ struct Stationary {
   float l11 = 0, l21 = 0, l22 = 0;
   void of(const BandPass& f) {
     // DF2T: s' = A s + B x, A = [[-a1, 1], [-a2, 0]], B = [-a1 b0, b2 - a2 b0]
-    double s1 = -f.a1 * f.b0, s2 = f.b2 - f.a2 * f.b0, p11 = 0, p12 = 0, p22 = 0;
+    const double a1 = f.a1, a2 = f.a2, b0 = f.b0, b2 = f.b2;  // widen before multiplying
+    double s1 = -a1 * b0, s2 = b2 - a2 * b0, p11 = 0, p12 = 0, p22 = 0;
     for (int i = 0; i < 12000; ++i) {
       p11 += s1 * s1; p12 += s1 * s2; p22 += s2 * s2;
-      double n1 = -f.a1 * s1 + s2, n2 = -f.a2 * s1;
+      double n1 = -a1 * s1 + s2, n2 = -a2 * s1;
       s1 = n1; s2 = n2;
     }
     l11 = static_cast<float>(std::sqrt(p11));
