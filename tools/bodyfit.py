@@ -8,7 +8,7 @@ For every sustain, each harmonic's steady level (harmonics.steady_levels) is fit
     L[file, k] = g[file] + S[dyn, k] + B(k·f0)
 
 g: the file's level; S: the bowed string's spectrum by harmonic number, one per dynamic; B: one body
-response for the instrument, piecewise linear in log-frequency (knots every 1/24 octave, smoothed).
+response for the instrument, piecewise linear in log-frequency (knots every 1/24 octave, 55 Hz-16 kHz, smoothed).
 Weighted least squares; harmonics more than 50 dB under the file's strongest are left out.
 
 The question is whether it predicts a note it has not seen better than what a sampler does. Leave
@@ -30,8 +30,9 @@ import common as C  # noqa: E402
 import harmonics as H  # noqa: E402
 
 KNOT_STEP = 1 / 24
-F_LO, F_HI = 55.0, 12000.0
+F_LO, F_HI = 55.0, 16000.0
 RANGE_DB = 50.0
+WEAK = 0.1
 LAMBDA = 0.3           # smoothness of B (second differences); 1/24 octave and 0.3 predict unseen notes best (4.05 dB; 1/6 and 3: 5.1)
 KMAX = 160          # harmonics fitted per note (C2: to 10.5 kHz)
 
@@ -43,7 +44,7 @@ def measure_all(root):
         f_et = C.mtof(s["midi"])
         f0s, _, _ = H.f0_per_sample(x, sr, f_et)
         f0 = float(np.median(f0s[int(0.4 * sr):int(min(len(x) / sr - 0.3, 3.0) * sr)]))
-        L = H.steady_levels(x, sr, f0, 0.4, min(len(x) / sr - 0.3, 3.0))[:KMAX]
+        L = H.steady_levels(x, sr, f0, 0.4, min(len(x) / sr - 0.3, 3.0), fmax=F_HI)[:KMAX]
         rows.append(dict(s, f0=f0, L=L))
     return rows
 
@@ -63,7 +64,10 @@ def hat(logf, kn):
 
 
 def weights(L):
-    return np.clip((L - (L.max() - RANGE_DB)) / RANGE_DB, 0, 1) ** 0.5
+    """By level: the strongest harmonics count most. Harmonics more than RANGE_DB under the strongest
+    still count a little (WEAK): left out, the fit never saw how the top falls away, and predicted a
+    note's weakest high harmonics 8-21 dB too loud (heard as a fizz, and its flicker as a flutter)."""
+    return np.maximum(np.clip((L - (L.max() - RANGE_DB)) / RANGE_DB, 0, 1) ** 0.5, WEAK)
 
 
 def fit(rows):

@@ -1,0 +1,12 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Long Ring",
+  "tags": [
+    "ringing"
+  ],
+  "params": {
+    "play.release": 200
+  }
+}

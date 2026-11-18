@@ -1,0 +1,12 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Still Bow",
+  "tags": [
+    "steady"
+  ],
+  "params": {
+    "life.amount": 0
+  }
+}

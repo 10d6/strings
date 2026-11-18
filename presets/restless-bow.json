@@ -1,0 +1,13 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Restless Bow",
+  "tags": [
+    "unsteady"
+  ],
+  "params": {
+    "life.amount": 150,
+    "life.speed": 120
+  }
+}

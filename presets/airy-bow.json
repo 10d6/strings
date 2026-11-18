@@ -1,0 +1,14 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Airy Bow",
+  "tags": [
+    "noisy",
+    "soft"
+  ],
+  "params": {
+    "tone.noise": 10,
+    "tone.grain": 130
+  }
+}

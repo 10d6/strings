@@ -1,0 +1,13 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Smooth Bow",
+  "tags": [
+    "clean"
+  ],
+  "params": {
+    "tone.noise": -8,
+    "tone.grain": 50
+  }
+}

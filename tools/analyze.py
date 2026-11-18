@@ -25,7 +25,25 @@ Per measured note, from its staccatos (every dynamic and round robin):
   release   each octave band's decay rate after the bow stops (dB/s): the sustains are cut
             mid-bow, so this is the only release in the library (docs/PHASE0.md)
 
-Takes about 4 minutes.
+The bow's movement while a note is held (tools/life.py, over every sustain's steady part):
+
+  life      per note (its 4 dynamics × 2 bows pooled, then smoothed across notes): the rms per
+            octave of modulation frequency (0.25-32 Hz) of its pitch (cents), its level (dB) and
+            its harmonics' own movement against the level (dB, a mean over harmonics)
+  patterns  the harmonics don't move independently but in a few shared patterns (the strongest three
+            hold 70 % of their movement): per note and dynamic, from its down-bow recording (whose
+            onset the engine plays: a note's recordings don't share their patterns), the three
+            principal components of its harmonics' movement (shape over harmonics 1-20), how fast each
+            moves (rms per octave of modulation frequency), and what is left over, per harmonic (rms)
+            and over time (spectrum), played independently
+  lifeK     how much more a harmonic moves the higher it is (1.3 dB on the fundamental, about 3 by
+            the 20th: a ratio to the mean, a line in log2 k fitted to k ≤ 20, held from 1.25× the
+            20th's: a judgment above it)
+  grain     per note and dynamic (down bow): the bow noise's pulse at the string's period, per
+            band, its depth and where in the fundamental's period it peaks (bands that can't be
+            seen between the harmonics take the nearest band's)
+
+Takes about 6 minutes.
 """
 import json
 import os
@@ -39,12 +57,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bodyfit as B  # noqa: E402
 import common as C  # noqa: E402
 import harmonics as H  # noqa: E402
+import life as LF  # noqa: E402
 
+NPAT = 3                # the harmonics' shared patterns kept per note
 ONSET_LEN = 0.40
 T_ON, XF = 0.30, 0.10
 T_C = T_ON + XF / 2
 KMAX = B.KMAX
-FMAX = 12000.0
+FMAX = 16000.0          # harmonics above it would be measured as noise (and played as hiss)
 BANDS = [62.5 * 2 ** i for i in range(9)]          # octave bands, 62.5 Hz-16 kHz (centres)
 
 
@@ -146,8 +166,8 @@ def main():
             pred = B.predict(model, d, r["f0"], len(r["L"]))
             w = B.weights(r["L"])
             g = np.sum(w * (r["L"] - pred)) / np.sum(w)
-            corr = np.where(w > 0, r["L"] - pred - g, 0.0)
-            cell.update(midi=m, dyn=d, corr=np.clip(corr, -24, 24).tolist(), fit_f0=r["f0"])
+            corr = r["L"] - pred - g     # every harmonic: the weakest, near the noise, read high if anything
+            cell.update(midi=m, dyn=d, corr=np.clip(corr, -40, 24).tolist(), fit_f0=r["f0"])
             data["cells"].append(cell)
             data["onset_rate"] = sr
             onsets.append(onset)
@@ -165,6 +185,86 @@ def main():
         rel = fill_bands({b: float(np.median(v)) for b, v in merged.items()})
         data["release"].append(rel)
         print("  %s from %d staccatos: %s dB/s" % (C.note_name(m), len(per), " ".join("%.0f" % v for v in rel)))
+    print("the bow's movement…", flush=True)
+    rng = np.random.default_rng(3)
+    stats = {}
+    for s in C.sustains(root):
+        x, sr = C.load(s["path"])
+        stats[(s["midi"], s["dyn"], s["bow"])] = LF.stats(x, sr, C.mtof(s["midi"]), 0.6, len(x) / sr - 0.15,
+                                                          rng, bands=BANDS)
+    life = {"pitch": [], "level": [], "harm": []}
+    for m in notes:
+        mine = [v for k, v in stats.items() if k[0] == m]
+        for key, src in (("pitch", "pitch_oct"), ("level", "level_oct"), ("harm", "harm_oct")):
+            life[key].append(np.median([v[src] for v in mine], axis=0))
+    for key in life:   # smooth across notes: a median of three, in log
+        L = np.log(np.maximum(np.array(life[key]), 1e-4))
+        Ls = L.copy()
+        for i in range(len(notes)):
+            lo, hi = max(0, i - 1), min(len(notes), i + 2)
+            Ls[i] = np.median(L[lo:hi], axis=0) if hi - lo == 3 else np.mean(L[lo:hi], axis=0)
+        data["life_" + key] = np.exp(Ls).tolist()
+    byk = {}
+    for v in stats.values():
+        med = np.median(v["harm_rms"])
+        for k, r in zip(v["harm_k"], v["harm_rms"]):
+            byk.setdefault(k, []).append(r / med)
+    ks = np.array(sorted(byk))
+    ratio = np.array([np.median(byk[k]) for k in ks])
+    a1, a0 = np.polyfit(np.log2(ks), ratio, 1)
+    kk = np.arange(1, KMAX + 1)
+    law = np.minimum(a0 + a1 * np.log2(kk), 1.25 * (a0 + a1 * np.log2(20)))
+    data["life_k"] = law.tolist()
+    print("  harmonics move %.2f + %.2f·log2 k times the mean (k ≤ 20 measured)" % (a0, a1))
+    # the patterns: per cell, from the down-bow recording whose onset the engine plays. A note's
+    # recordings don't share them (pooled over its 8, the strongest three hold 48 %; in one, 70 %):
+    # each performance has its own few.
+    shapes, shape_oct, resid_k, resid_oct, explained = [], [], [], [], []
+    for m in notes:
+        for d in C.DYNAMICS:
+            D = stats[(m, d, "d")]["_D"]
+            kl = len(D)
+            w, V = np.linalg.eigh(D @ D.T / D.shape[1])
+            V = V[:, ::-1][:, :NPAT]
+            explained.append(float(w[::-1][:NPAT].sum() / w.sum()))
+            so = np.array([LF.per_octave(V[:, c] @ D) for c in range(NPAT)])
+            R = D - V @ (V.T @ D)
+            rk = R.std(axis=1)
+            ro = np.mean([LF.per_octave(row) for row in R], axis=0)
+            ro = ro / np.sqrt(np.sum(ro ** 2))
+            full = np.zeros(KMAX)
+            full[:kl] = rk
+            full[kl:] = rk[-1]   # above the 20th, as the 20th (a judgment: higher up the recordings'
+            #                      harmonics are too near the noise to measure how they move)
+            sh = np.zeros((NPAT, LF.KMAXL))
+            sh[:, :kl] = V.T
+            shapes.append(sh.tolist())
+            shape_oct.append(so.tolist())
+            resid_k.append(full.tolist())
+            resid_oct.append(ro.tolist())
+    data["life_shape"] = shapes          # [note * dyn][pattern][harmonic]
+    data["life_shape_oct"] = shape_oct   # [note * dyn][pattern][octave]
+    data["life_resid_k"] = resid_k       # [note * dyn][harmonic]
+    data["life_resid_oct"] = resid_oct   # [note * dyn][octave], unit power
+    print("  patterns: the strongest %d hold %.0f %% of the harmonics' movement (median over cells)" % (
+        NPAT, 100 * np.median(explained)))
+    # the noise's pulse per cell (down bow); its phase between the bows, as a check it is a property
+    gm, gp, agree = [], [], []
+    for m in notes:
+        for d in C.DYNAMICS:
+            vd, vg = stats[(m, d, "d")], stats[(m, d, "g")]
+            have = [b for b in range(len(BANDS)) if vd["noise_mod"][b] is not None]
+            fill = lambda arr: [arr[b] if arr[b] is not None else arr[min(have, key=lambda h: abs(h - b))]
+                                for b in range(len(BANDS))]
+            gm.append(fill(vd["noise_mod"]))
+            gp.append(fill(vd["noise_psi"]))
+            for b in have:
+                if vg["noise_mod"][b] is not None and vd["noise_mod"][b] > 0.15:
+                    agree.append(abs(np.angle(np.exp(1j * (vd["noise_psi"][b] - vg["noise_psi"][b])))))
+    data["grain_depth"] = gm
+    data["grain_phase"] = gp
+    print("  noise pulse: depth median %.2f; peak phase, down against up bow (depth > 0.15): median %.0f° apart" % (
+        float(np.median(gm)), np.degrees(np.median(agree))))
     # one staccato set per note scatters from note to note (C5's fundamental 163 dB/s, A4's 31):
     # a median of three neighbouring notes per band, in log
     R = np.log(np.array(data["release"]))

@@ -1,0 +1,13 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Shimmer",
+  "tags": [
+    "moving"
+  ],
+  "params": {
+    "life.flicker": 200,
+    "life.speed": 150
+  }
+}

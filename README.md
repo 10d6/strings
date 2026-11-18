@@ -10,8 +10,11 @@ plan, [`docs/MODEL.md`](docs/MODEL.md) how the cello is modelled today, and
 [`docs/SOURCES.md`](docs/SOURCES.md) the recordings and their licenses.
 
 Today it plays the cello, C2-C6, with velocity choosing the dynamic (p to f): each note starts as
-its recording and hands over to the model, which sustains as long as the key is held. There are no
-bow controls yet.
+its recording and hands over to the model, which sustains as long as the key is held and moves as a
+bowed note does (its pitch, level and each harmonic wandering, the bow noise pulsing with the string,
+all measured from the recordings). The Bow and Tone panels change how much it moves, how much of the
+body is in the tone, and the bow noise; the presets show the range. There are no bow controls
+(pressure, position, legato) yet.
 
 ## The recordings
 
@@ -22,12 +25,16 @@ note's first 0.4 s as recorded. To measure again:
 
 ```
 git clone --depth 1 https://github.com/sfzinstruments/karoryfer-bigcat.cello ../bigcat   # 267 MB
-python3 -I tools/analyze.py ../bigcat tools/cello.json tools/cello_onsets.npz           # ~3 min
+python3 -I tools/analyze.py ../bigcat tools/cello.json tools/cello_onsets.npz           # ~5 min
 python3 -I tools/make_header.py tools/cello.json tools/cello_onsets.npz src/CelloData.h
 # build, then check against the recordings:
 python3 -I tools/measure.py ../bigcat build/strings_render      # every note and dynamic (~2.5 min)
 python3 -I tools/handoff.py ../bigcat build/strings_render      # the onset's hand-off to the model
+python3 -I tools/life.py ../bigcat --render build/strings_render # how notes move, against the recordings
 ```
+
+The noise and the movement are calibrated against the recordings (`tools/calibrate_noise.py`,
+`tools/calibrate_life.py`, `tools/calibrate_flicker.py`; `docs/MODEL.md` has when and how).
 
 (needs `pip install numpy scipy soundfile matplotlib`)
 
