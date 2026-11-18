@@ -1,0 +1,38 @@
+{
+  "patch": "init",
+  "length": 6,
+  "params": {
+    "life.amount": 300,
+    "life.pitch": 400,
+    "life.flicker": 400,
+    "life.speed": 400,
+    "tone.body": 200,
+    "tone.noise": 12,
+    "tone.grain": 300
+  },
+  "events": [
+    {
+      "t": 0,
+      "on": 36,
+      "vel": 127
+    },
+    {
+      "t": 0,
+      "on": 64,
+      "vel": 127
+    },
+    {
+      "t": 3.5,
+      "off": 36
+    },
+    {
+      "t": 3.5,
+      "off": 64
+    }
+  ],
+  "expect": {
+    "soundBy": 0.05,
+    "silentAfter": 5.8,
+    "peakBelow": 0
+  }
+}

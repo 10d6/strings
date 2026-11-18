@@ -44,16 +44,35 @@ from CI at milestones.
   recordings (other bow's spectrum 3.6, source × body for an unseen note 7.0, neighbour 13.0). Compare
   spectra with the envelope and onset shared: whole other takes measure a different performance.
 - **The engine** (`docs/MODEL.md`): `src/CelloData.h` is generated (`tools/analyze.py` →
-  `tools/cello.json` + `tools/cello_onsets.npz` → `tools/make_header.py`); never edit it by hand. A
-  note is the recorded onset (0.4 s, the nearest measured note transposed) crossfading at 0.30-0.40 s
-  into a harmonic bank started in phase with it (`handDb`/`handPh` at 0.35 s), then source × body
-  plus the measured notes' own corrections (fading over 3 semitones), octave-band bow noise, and a
-  release from the staccatos. After any change to the sound run `tools/measure.py` (3.0 % median
-  today; timbre 2.3; other bow 20.1) and `tools/handoff.py` (the render's extra dip at the hand-off:
-  median 0.2 dB), `--check`, and `stress.py` (`--keys 36-84` and the full range), and report them.
-- Lessons: anything stepped per `render` call must scale by its length (`exp(rate · n)`): the kit
-  checks blocks of 1 sample, and a per-call decay made notes end 32× faster; a key let go before the
-  hand-off must still hand over (from the decayed level), or the bank starts late at full level.
+  `tools/cello.json` + `tools/cello_onsets.npz`, with `tools/life_adjust.json` and
+  `tools/noise_adjust.json` → `tools/make_header.py`); never edit it by hand. A note is the recorded
+  onset (0.4 s, the nearest measured note transposed) crossfading at 0.30-0.40 s into a harmonic bank
+  (to 16 kHz) started in phase with it (`handDb`/`handPh` at 0.35 s), then source × body plus the
+  measured notes' own corrections (fading over 3 semitones), the bow's measured movement (pitch, level,
+  each harmonic on its own), octave-band bow noise pulsing at the string's period, and a release from
+  the staccatos.
+- **After any change to the sound** run and report: `tools/measure.py` (4.3 % median today; timbre
+  3.3; other bow 20.1), `tools/handoff.py` (the render's extra dip at the hand-off: median 0.4 dB),
+  `tools/life.py --render` (the movement's statistics against the recordings: docs/MODEL.md's table),
+  `--check`, and `stress.py` (`--keys 36-84`, `--mode overlap`, the full range, and extremes), and
+  browser speed (`bench-web.cjs tests/four-strings.json`: 3.6× today). After changing the analysis or
+  the engine's noise or movement, recalibrate (`calibrate_noise.py`, `calibrate_life.py`: docs/MODEL.md).
+- **The movement can't be judged by the distance**: a random path doesn't follow the recording's own
+  (two renders of the same note are 2.8 % apart). Judge it by `tools/life.py`'s statistics, and the
+  distance's signed differences for bias.
+- **Block-size independence**: everything not per sample runs on the voice's own 32-sample step
+  (`kGrid`, counted in the note's time), never per render call; the kit checks blocks of 1-4096.
+- Lessons: anything stepped per `render` call must scale by its length (the kit checks blocks of 1
+  sample: a per-call decay made notes end 32× faster); a key let go before the hand-off must still hand
+  over (from the decayed level); a harmonic's movement needs a steep top (a band-pass skirt's
+  sidebands, or gains changed in steps, bury the noise between the harmonics and hide its pulse); band
+  noises need their own noise each (from one, neighbours cancel where they overlap); harmonics stop at
+  `kFMax`, and anything above it is measured as noise (at 12 kHz the top band played 8-15 dB of hiss);
+  measurements that read biased (the residual on low notes, the slowest movement) need calibrating
+  render against recording, not correcting by hand; time with a Release build (the default isn't).
+- Speed: low notes cost most (160 harmonics). The browser's expf/logf are slow (use `fastExp`,
+  `fastLog2`); normal draws cost a log, a cosine and a root (use uniform: the filters make it Gaussian);
+  SIMD and four partial sums in the bank didn't help.
 - Analysis tools read the recordings from a path given on the command line; run them with
   `python3 -I` from outside the data directory.
 - Measure first, then model; where something can't be measured from these libraries (Bow Position,

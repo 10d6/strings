@@ -1,0 +1,13 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Bare String",
+  "tags": [
+    "bright",
+    "creative"
+  ],
+  "params": {
+    "tone.body": 0
+  }
+}

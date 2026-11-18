@@ -38,8 +38,8 @@ VEL = {"p": 16, "mp": 48, "mf": 80, "f": 112}
 TRIM_DB = -6.0          # the engine's headroom (kTrimDb in src/Synth.cpp): undone before comparing
 
 
-def render(tool, midi, vel, tmp, length=3.4, off=3.2):
-    sc = dict(patch="init", sampleRate=SR, length=length,
+def render(tool, midi, vel, tmp, length=3.4, off=3.2, params=None):
+    sc = dict(patch="init", sampleRate=SR, length=length, params=params or {},
               events=[dict(t=0, on=int(midi), vel=int(vel)), dict(t=off, off=int(midi))])
     js = os.path.join(tmp, "sc_%d_%d.json" % (midi, vel))
     wav = os.path.join(tmp, "r_%d_%d.wav" % (midi, vel))

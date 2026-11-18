@@ -57,9 +57,9 @@ decaying partials. The rest of the piano's pipeline carries over.
    by rendering: 3.0 % from the recordings) (`tools/`, Python, offline): f0 and harmonic tracking that survives vibrato,
    onset residuals, the source × body factorisation, noise bands, onset envelopes, a header
    generator.
-2. **Engine v1:** a living sustain (the bow's level and pitch movement, measured from the recordings),
-   noise that pulses with the string, parameters, page, presets. (The harmonic bank, noise and
-   recorded onset are in from Phase 1.)
+2. **Engine v1** (done: `docs/MODEL.md`): a living sustain (the bow's pitch, level and each harmonic's
+   own movement, measured from the recordings and calibrated to match them), noise that pulses with
+   the string, the body following the pitch, harmonics to 16 kHz, parameters, page, presets.
 3. **Playability:** the controls above.
 4. **Calibration:** the piano's perceptual distance, a leave-one-note-out test, blind listening.
 5. **Violin:** the same pipeline on its data.

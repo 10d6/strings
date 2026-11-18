@@ -1,0 +1,20 @@
+{
+  "patch": "init",
+  "length": 6,
+  "events": [
+    {
+      "t": 0,
+      "on": 43,
+      "vel": 80
+    },
+    {
+      "t": 4,
+      "off": 43
+    }
+  ],
+  "expect": {
+    "soundBy": 0.05,
+    "silentAfter": 5.8,
+    "peakBelow": -6
+  }
+}

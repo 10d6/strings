@@ -1,0 +1,13 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Big Body",
+  "tags": [
+    "dark",
+    "hollow"
+  ],
+  "params": {
+    "tone.body": 170
+  }
+}

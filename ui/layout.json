@@ -1,10 +1,34 @@
 {
   "theme": { "accent": "#8a4b2a" },
   "sections": [
-    { "kit": "lfo1", "title": "LFO", "info": "Route it to Pitch in the matrix for vibrato. The cello's recordings have none of their own." },
+    { "title": "Bow", "info": "How a held note moves: the bow's own unsteadiness, measured from the cello's recordings. Every note moves differently.", "controls": [
+      { "param": "life.amount", "size": "large" },
+      { "param": "life.pitch" },
+      { "param": "life.flicker" },
+      { "param": "life.speed" }
+    ]},
+    { "title": "Tone", "controls": [
+      { "param": "tone.body", "size": "large" },
+      { "param": "tone.noise" },
+      { "param": "tone.grain" }
+    ]},
+    { "title": "Playing", "controls": [
+      { "param": "play.release" }
+    ]},
+    { "kit": "lfo1", "title": "LFO", "info": "Route it to Pitch in the matrix for vibrato (the Vibrato preset does: 5.5 Hz, ±20 cents, fading in). The harmonics move through the body's resonances as it swings. The recordings have no vibrato of their own." },
     { "kit": "modMatrix", "wide": true },
     { "kit": "voices" },
     { "kit": "master" }
   ],
+  "paramInfo": {
+    "life.amount": "How much the held note moves, all of it together: 100 % is the cello's own, as measured from its recordings (its pitch wandering by about 1.5 cents, its level by about 1.4 dB, each harmonic by 1-3 dB on its own). 0 holds the note perfectly still, which sounds synthetic; up to 300 % is a restless, unsteady bow. Listen to a long held note after its first half second.",
+    "life.pitch": "The pitch's share of the movement: lower steadies the pitch while the tone keeps moving, higher makes it waver (400 % is about 6 cents, an unsteady hand).",
+    "life.flicker": "Each harmonic moving on its own, which is most of what makes a bowed note sound alive (the higher harmonics most: about 1.3 dB on the fundamental, 3 dB by the 20th). Lower makes the tone glassy and still; higher makes it shimmer. Easiest to hear on low notes.",
+    "life.speed": "How fast the movement is: 100 % is the cello's own (most of it slower than 2 Hz for the level, up to 16 Hz for the pitch and the harmonics). Lower is a slow drift; higher is a nervous trembling.",
+    "tone.body": "How much of the cello's body is in the tone: its resonances, measured from every note of the recordings, which colour each harmonic by where its frequency falls. 0 is the bowed string alone (bare and buzzy); 100 % is the cello; up to 200 % exaggerates the body (hollow and vowel-like). The level stays the same.",
+    "tone.noise": "The bow's noise, the rosin's hiss under the note: 0 dB as measured, where it sits 35-45 dB under the tone, so a few dB either way is subtle. Lower is a smoother, cleaner tone; +12 dB and up is clearly airy and scratchy. Most audible on soft and high notes.",
+    "tone.grain": "How the bow noise pulses with the string: in the recordings it comes in bursts, once per vibration, as the bow catches and slips (most in the upper bands). 0 is steady hiss beside the note; 100 % is as measured, the noise woven into the tone; higher is gritty and rasping.",
+    "play.release": "How long the strings ring after you let go: 100 % is measured from the cello's staccatos (the low notes ring longest). Lower damps them; higher lets them ring on, as an open string would."
+  },
   "keyboard": true
 }

@@ -5,10 +5,11 @@
 
 The noise bands' gains are solved here, against the engine's own filters (two RBJ band-pass stages,
 Q 1.2, per octave band: `kNoiseQ`), so that their overlapping outputs add up to each cell's measured
-band powers (tools/analyze.py `noise`) for unit-variance white noise at kOnsetRate. The engine scales
-them by its sample rate.
+band powers (tools/analyze.py `noise`) for unit-variance white noise at kOnsetRate, a separate noise
+per band (so their powers add). The engine scales them by its sample rate.
 """
 import json
+import os
 import sys
 
 import numpy as np
@@ -48,7 +49,19 @@ def solve_gains(M, target_db):
     g = T / np.diag(M)
     for _ in range(400):
         g *= (T / (M @ g)) ** 0.5
+    g = np.maximum(g, 1e-12)   # a band whose neighbours already pass more than its target: off
     return 10 * np.log10(g), 10 * np.log10(M @ g) - np.array(target_db)
+
+
+def grain_table():
+    """The noise pulse's shape: u^p with u = (1 + cos θ) / 2. Its depth (2<e cos θ>/<e>, what
+    tools/life.py measures) for each exponent p, inverted on a grid of depths 0-1.9 by 0.05."""
+    th = np.linspace(0, 2 * np.pi, 4096, endpoint=False)
+    u = (1 + np.cos(th)) / 2
+    ps = np.linspace(0, 40, 4001)
+    depth = np.array([2 * np.mean(u ** p * np.cos(th)) / np.mean(u ** p) for p in ps])
+    grid = np.arange(0, 1.9001, 0.05)
+    return grid, np.interp(grid, depth, ps)
 
 
 def arr(name, ctype, values, fmt, per_line=16):
@@ -69,6 +82,13 @@ def ff(v):
 def main():
     js, npz, out = sys.argv[1:4]
     d = json.load(open(js))
+    # the movement's calibration (tools/calibrate_life.py), kept apart so re-analysing keeps it
+    adj_path = os.path.join(os.path.dirname(os.path.abspath(js)), "life_adjust.json")
+    if os.path.exists(adj_path):
+        adj = json.load(open(adj_path))
+        for key in ("pitch", "level", "harm"):
+            if key in adj:
+                d["life_" + key] = (np.array(d["life_" + key]) * np.array(adj[key])).tolist()
     on = np.load(npz)
     onsets = on["onsets"].astype(np.float64)
     if "scale" in on:
@@ -77,6 +97,9 @@ def main():
     nN, nD, nB = len(notes), len(dyns), len(bands)
     sr = d["onset_rate"]
     cells = {(c["midi"], c["dyn"]): c for c in d["cells"]}
+    # the noise's calibration (tools/calibrate_noise.py): added to the targets before the solve
+    nadj_path = os.path.join(os.path.dirname(os.path.abspath(js)), "noise_adjust.json")
+    nadj = json.load(open(nadj_path)) if os.path.exists(nadj_path) else {}
     M = band_matrix(bands, sr)
     hand_db = np.full((nN, nD, K), -12000, int)
     hand_ph = np.zeros((nN, nD, K), int)
@@ -99,7 +122,8 @@ def main():
             level[i, j] = c["level"]
             hand_f0[i, j] = c["hand_f0"]
             fit_f0[i, j] = c["fit_f0"]
-            g, resid = solve_gains(M, c["noise"])
+            target = np.array(c["noise"]) + np.array(nadj.get("%d_%s" % (m, dy), [0.0] * nB))
+            g, resid = solve_gains(M, target)
             noise[i, j] = g
             worst = max(worst, float(np.max(np.abs(resid))))
     hand_ph = np.where(hand_ph > 127, hand_ph - 256, hand_ph)
@@ -151,6 +175,22 @@ def main():
         "constexpr int kKnots = %d;" % len(d["knots"]),
         "constexpr float kKnot0 = %s, kKnotStep = %s;   // log2(Hz)" % (ff(d["knots"][0]), ff(d["knots"][1] - d["knots"][0])),
         arr("body[kKnots]", "float", d["body"], ff, 10),
+        "// the bow's movement while a note is held (tools/life.py): per note, the rms in each octave of",
+        "// modulation frequency (lower edges kLifeOct0 · 2^i Hz) of its pitch (cents), level (dB) and",
+        "// harmonics' own movement (dB, a mean over harmonics; harmonic k moves lifeK[k] times that)",
+        "constexpr int kOct = %d;" % len(d["life_pitch"][0]),
+        "constexpr float kLifeOct0 = 0.25f;",
+        arr("lifePitch[kNotes][kOct]", "float", np.array(d["life_pitch"]).flatten(), ff, 8),
+        arr("lifeLevel[kNotes][kOct]", "float", np.array(d["life_level"]).flatten(), ff, 8),
+        arr("lifeHarm[kNotes][kOct]", "float", np.array(d["life_harm"]).flatten(), ff, 8),
+        arr("lifeK[kHarm]", "float", d["life_k"], ff, 10),
+        "// the bow noise's pulse at the string's period, per note, dynamic and band (down bow): its depth",
+        "// (2<e cos θ>/<e>) and where in the fundamental's period it peaks (rad)",
+        arr("grainDepth[kNotes][kDyns][kBands]", "float", np.array(d["grain_depth"]).flatten(), ff, 9),
+        arr("grainPhase[kNotes][kDyns][kBands]", "float", np.array(d["grain_phase"]).flatten(), ff, 9),
+        "// the pulse u^p (u = (1 + cos θ) / 2) that has a depth: p at depths 0, 0.05 … 1.9",
+        "constexpr int kGrainSteps = %d;" % len(grain_table()[0]),
+        arr("grainExp[kGrainSteps]", "float", grain_table()[1], ff, 10),
         "// the onsets, per note and dynamic: kOnsetLen samples at kOnsetRate, times kOnsetScale",
         arr("onset[kNotes * kDyns][kOnsetLen]", "short", q.flatten(), str, 24),
         "}  // namespace cello_data",
