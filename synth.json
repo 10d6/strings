@@ -1,0 +1,17 @@
+{
+  "id": "strings",
+  "name": "Strings",
+  "vendor": "10d6",
+  "version": "0.1.0",
+  "pluginCode": "Strn",
+  "vendorCode": "Tend",
+  "patchVersion": 1,
+  "features": {
+    "voices": 16,
+    "voiceModes": ["poly", "mono", "legato"],
+    "standardEnvelopes": 1,
+    "standardLfos": 1,
+    "modSlots": 4,
+    "tempoInPatch": true
+  }
+}
