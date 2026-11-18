@@ -10,6 +10,10 @@ Over each sustain's steady part (0.6 s to 0.15 s before its end; renders: 0.6-3.
   harmonics  each harmonic's level against the note's level (dB, k ≤ 20, within 40 dB of the
              strongest), trend removed: rms per harmonic, spectrum, and how alike the harmonics move
              (mean correlation between them: 1 would be one common movement)
+  patterns   how the harmonics move together: the share of their movement in its strongest one and
+             three principal components. They move in a few shared patterns, not independently: 36 %
+             and 70 % in the recordings, where independent harmonics would give about 10 % and 30 %
+             (the mean correlation, near 0, hides it: the patterns mix up and down)
   noise      the bow noise's modulation at the string's period, per octave band: the residual with
              every harmonic notched out (±f0/4), band-passed, its envelope e's component at the
              fundamental's own phase θ (the phase of its first harmonic, as the engine has it):
@@ -91,6 +95,9 @@ def stats(x, sr, f_guess, t0, t1, rng, bands=BANDS):
     keep = [k for k in range(len(Ld)) if Ld[k].mean() > top - 40]
     diff = np.array([detrend(Ld[k] - E) for k in keep])
     cc = np.corrcoef(diff) if len(diff) > 1 else np.ones((1, 1))
+    ev = np.sort(np.linalg.eigvalsh(np.cov(diff)))[::-1] if len(diff) > 2 else np.ones(3)
+    kl = min(KMAXL, len(Ld))
+    full = np.array([detrend(Ld[k] - E) for k in range(kl)])    # every harmonic to the 20th, for pooling
     mcorr = float((cc.sum() - len(cc)) / (len(cc) * (len(cc) - 1))) if len(cc) > 1 else 1.0
     theta = an["phi"] + np.angle(an["a"][0])         # the fundamental's own phase
     nmod = noise_modulation(an["resid"], theta, fm, sr, a, b, rng, bands)
@@ -99,7 +106,8 @@ def stats(x, sr, f_guess, t0, t1, rng, bands=BANDS):
                 harm_rms=[float(np.std(d)) for d in diff], harm_k=[k + 1 for k in keep],
                 harm_oct=np.mean([per_octave(d) for d in diff], axis=0).tolist(), harm_corr=mcorr,
                 noise_mod=[v[0] if v else None for v in nmod], noise_psi=[v[1] if v else None for v in nmod],
-                noise_null=[v[2] if v else None for v in nmod])
+                noise_null=[v[2] if v else None for v in nmod],
+                pc1=float(ev[0] / ev.sum()), pc3=float(ev[:3].sum() / ev.sum()), _D=full)
 
 
 def summary(rows, label):
@@ -111,6 +119,8 @@ def summary(rows, label):
     hr = [np.median(r["harm_rms"]) for r in rows]
     print("  harmonics rms %.2f dB (median over harmonics), correlation between them %.2f; per octave: %s" % (
         np.median(hr), med("harm_corr"), " ".join("%.2f" % v for v in oct_("harm_oct"))))
+    print("  patterns: the strongest has %.0f %% of the harmonics' movement, the strongest three %.0f %%" % (
+        100 * med("pc1"), 100 * med("pc3")))
     for i, fc in enumerate(BANDS):
         m = [r["noise_mod"][i] for r in rows if r["noise_mod"][i] is not None]
         n = [r["noise_null"][i] for r in rows if r["noise_null"][i] is not None]
@@ -164,8 +174,9 @@ def main():
         summary(ren, "renders")
         out["renders"] = ren
     if a.json:
+        strip = lambda rows: [{k: v for k, v in r.items() if not k.startswith("_")} for r in rows]
         with open(a.json, "w") as f:
-            json.dump(out, f)
+            json.dump({k: strip(v) for k, v in out.items()}, f)
 
 
 if __name__ == "__main__":

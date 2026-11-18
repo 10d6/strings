@@ -29,7 +29,13 @@ constexpr float kCorrSpan = 3;          // a measured note's own correction fade
 constexpr float kEndDb = -96;
 constexpr float kTrimDb = -6;           // headroom: four strings at f peak near 0 dBFS at the recordings' level
 constexpr int kFlickBands = 3;          // a harmonic's own movement: three two-octave bands, 0.25-16 Hz
-constexpr int kFlickEvery = 4;          // ... updated every 4th step (345 Hz at 44.1 kHz: 17× its 20 Hz top)
+constexpr int kFlickEvery = 4;
+// The level moves only slowly: the recordings' level also moves 0.2-0.3 dB per octave at 2-16 Hz,
+// but played alone (not tied to the rest of the bow's change) that is a random volume jitter (the
+// owner heard it so). A judgment: its octaves from 2 Hz up are left out, and a low-pass at 3 Hz
+// closes the slower bands' skirts.
+constexpr int kLevelOcts = 3;           // 0.25-2 Hz
+constexpr float kLevelLpHz = 3;          // ... updated every 4th step (345 Hz at 44.1 kHz: 17× its 20 Hz top)
 constexpr int kGrainTable = 64;
 constexpr float kLn10_20 = 0.11512925f; // ln(10) / 20
 constexpr float kRecomputeRatio = 1.7345e-3f;  // the spectrum follows the pitch past 3 cents (its detail is 50)
@@ -243,7 +249,15 @@ struct StringsVoice : Voice {
   // the bow's movement (cents, dB), as band-limited noise per octave, on the kGrid step
   BandPass wPitch[cd::kOct], wLevel[cd::kOct], wHarm[kMaxHarm][kFlickBands];
   LowPass wHarmLp[kMaxHarm];
+  LowPass wLevelLp;
   float rmsPitch[cd::kOct], rmsLevel[cd::kOct], rmsHarm[kFlickBands];
+  // the harmonics' shared patterns (the recording's own): a shape over the harmonics and its score,
+  // band-limited noise with the measured spectrum; and each harmonic's leftover, independent part
+  BandPass wPat[cd::kPat][cd::kOct];
+  LowPass wPatLp[cd::kPat];
+  float rmsPat[cd::kPat][cd::kOct], score[cd::kPat];
+  const float* shape[cd::kPat];
+  const float* residK = nullptr;
   float normOct[cd::kOct], normFlick[kFlickBands];   // each filter's rms for unit noise
   Stationary statOct[cd::kOct], statFlick[kFlickBands];   // their steady states (at Speed 100 %)
   float flick[kMaxHarm];
@@ -309,7 +323,10 @@ void StringsVoice::tuneWander(float speed) {
     float fc = cd::kLifeOct0 * std::pow(2.f, o + 0.5f) * speed;
     wPitch[o].set(fc, std::sqrt(2.f), gr);
     wLevel[o].set(fc, std::sqrt(2.f), gr);
+    for (int c = 0; c < cd::kPat; ++c) wPat[c][o].set(fc, std::sqrt(2.f), gr);
   }
+  wLevelLp.set(kLevelLpHz * speed, gr);
+  for (int c = 0; c < cd::kPat; ++c) wPatLp[c].set(kFlickLpHz * speed, gr);
   const float grf = gr / kFlickEvery;
   for (int k = 0; k < K; ++k) {
     for (int j = 0; j < kFlickBands; ++j) wHarm[k][j].set(cd::kLifeOct0 * std::pow(4.f, j + 0.5f) * speed, 0.67f, grf);
@@ -438,21 +455,32 @@ void StringsVoice::setup(VoiceContext& ctx) {
   // the bow's movement: this note's spectra, the filters' state from rest
   for (int o = 0; o < cd::kOct; ++o) {
     rmsPitch[o] = cd::lifePitch[lo][o] + tn * (cd::lifePitch[lo + 1][o] - cd::lifePitch[lo][o]);
-    rmsLevel[o] = cd::lifeLevel[lo][o] + tn * (cd::lifeLevel[lo + 1][o] - cd::lifeLevel[lo][o]);
+    rmsLevel[o] = o < kLevelOcts ? cd::lifeLevel[lo][o] + tn * (cd::lifeLevel[lo + 1][o] - cd::lifeLevel[lo][o]) : 0.f;
   }
-  for (int j = 0; j < kFlickBands; ++j) {   // two octaves each: their rms added in power
+  // the harmonics' own movement: the onset's cell's patterns (the same recording), and its leftover
+  // part's spectrum split into the three two-octave bands (up to 16 Hz: the rest is closed off)
+  const int cell = on * cd::kDyns + od;
+  for (int c = 0; c < cd::kPat; ++c) {
+    shape[c] = cd::lifeShape[cell][c];
+    // up to 16 Hz only, as a harmonic's leftover movement: faster, its sidebands land between the
+    // harmonics as noise (on C3 they put 14-25 dB more there than the recording has)
+    for (int o = 0; o < cd::kOct; ++o) rmsPat[c][o] = o < 6 ? cd::lifeShapeOct[cell][c][o] : 0.f;
+    wPatLp[c].reset();
+    score[c] = 0;
+  }
+  residK = cd::lifeResidK[cell];
+  for (int j = 0; j < kFlickBands; ++j) {
     float a = 0;
-    for (int o = 2 * j; o < 2 * j + 2; ++o) {
-      float h = cd::lifeHarm[lo][o] + tn * (cd::lifeHarm[lo + 1][o] - cd::lifeHarm[lo][o]);
-      a += h * h;
-    }
+    for (int o = 2 * j; o < 2 * j + 2; ++o) a += cd::lifeResidOct[cell][o] * cd::lifeResidOct[cell][o];
     rmsHarm[j] = std::sqrt(a);
   }
   // the wander starts in its steady state (drawn at Speed 100 %'s statistics: near enough at others)
   tuneWander(pSpeed);
+  wLevelLp.reset();
   for (int o = 0; o < cd::kOct; ++o) {
     statOct[o].draw(wPitch[o], wrng);
     statOct[o].draw(wLevel[o], wrng);
+    for (int c = 0; c < cd::kPat; ++c) statOct[o].draw(wPat[c][o], wrng);
   }
   for (int k = 0; k < K; ++k) {
     for (int j = 0; j < kFlickBands; ++j) statFlick[j].draw(wHarm[k][j], wrng);
@@ -500,10 +528,11 @@ void StringsVoice::step(VoiceContext& ctx) {
     if (pSpeed != wSpeed) tuneWander(pSpeed);
     const float sp = 1.f / std::sqrt(pSpeed);   // a filter's rms for unit noise grows with its centre
     pitchC = wanderOctaves(wPitch, rmsPitch, sp * lifeW * pPitch);
-    levelDb = dsp::clamp(wanderOctaves(wLevel, rmsLevel, sp * lifeW), -12.f, 12.f);
+    levelDb = dsp::clamp(wLevelLp.process(wanderOctaves(wLevel, rmsLevel, sp * lifeW)), -12.f, 12.f);
     // each harmonic's own movement is measured against the note's level, so it moves energy between
     // the harmonics and leaves the level to the level's own wander: c takes out what it would add
     float fl = sp * lifeW * pFlicker;
+    for (int c = 0; c < cd::kPat; ++c) score[c] = wPatLp[c].process(wanderOctaves(wPat[c], rmsPat[c], 1.f));
     const bool flickNow = (t / kGrid) % kFlickEvery == 0;
     float num = 0, den = 0;
     for (int k = 0; k < K; ++k) {
@@ -517,10 +546,12 @@ void StringsVoice::step(VoiceContext& ctx) {
       // unit-variance uniform draws: the narrow filters make their output Gaussian enough, and a
       // normal draw costs a log, a cos and a square root
       for (int j = 0; j < kFlickBands; ++j) h += wHarm[k][j].process(wrng.bipolar() * 1.7320508f) * rmsHarm[j] / normFlick[j];
-      h = wHarmLp[k].process(h);
+      h = wHarmLp[k].process(h) * residK[k];
+      if (k < cd::kPatHarm)
+        for (int c = 0; c < cd::kPat; ++c) h += shape[c][k] * score[c];
       // a harmonic can sink far but rise only so much: Life and Flicker multiply, and at their tops a
       // high harmonic's own movement would otherwise swing by tens of dB
-      flick[k] = fastExp(kLn10_20 * dsp::clamp(fl * cd::lifeK[k] * h, -40.f, 12.f));   // as a gain
+      flick[k] = fastExp(kLn10_20 * dsp::clamp(fl * h, -40.f, 12.f));   // as a gain
       float a2 = amp[k] * amp[k];
       num += a2 * flick[k] * flick[k];
       den += a2;

@@ -44,21 +44,34 @@ from CI at milestones.
   recordings (other bow's spectrum 3.6, source × body for an unseen note 7.0, neighbour 13.0). Compare
   spectra with the envelope and onset shared: whole other takes measure a different performance.
 - **The engine** (`docs/MODEL.md`): `src/CelloData.h` is generated (`tools/analyze.py` →
-  `tools/cello.json` + `tools/cello_onsets.npz`, with `tools/life_adjust.json` and
-  `tools/noise_adjust.json` → `tools/make_header.py`); never edit it by hand. A note is the recorded
+  `tools/cello.json` + `tools/cello_onsets.npz`, with `tools/life_adjust.json`,
+  `tools/noise_adjust.json` and `tools/flicker_adjust.json` → `tools/make_header.py`); never edit it by hand. A note is the recorded
   onset (0.4 s, the nearest measured note transposed) crossfading at 0.30-0.40 s into a harmonic bank
   (to 16 kHz) started in phase with it (`handDb`/`handPh` at 0.35 s), then source × body plus the
   measured notes' own corrections (fading over 3 semitones), the bow's measured movement (pitch, level,
-  each harmonic on its own), octave-band bow noise pulsing at the string's period, and a release from
+  the harmonics in their recording's own three patterns plus an independent rest), octave-band bow noise pulsing at the string's period, and a release from
   the staccatos.
-- **After any change to the sound** run and report: `tools/measure.py` (4.3 % median today; timbre
-  3.3; other bow 20.1), `tools/handoff.py` (the render's extra dip at the hand-off: median 0.4 dB),
+- **After any change to the sound** run and report: `tools/measure.py` (3.8 % median today; timbre
+  2.8; other bow 20.1), `tools/handoff.py` (the render's extra dip at the hand-off: median 0.3 dB),
   `tools/life.py --render` (the movement's statistics against the recordings: docs/MODEL.md's table),
   `--check`, and `stress.py` (`--keys 36-84`, `--mode overlap`, the full range, and extremes), and
-  browser speed (`bench-web.cjs tests/four-strings.json`: 3.6× today). After changing the analysis or
-  the engine's noise or movement, recalibrate (`calibrate_noise.py`, `calibrate_life.py`: docs/MODEL.md).
+  browser speed (`bench-web.cjs tests/four-strings.json`: 3.5× today). After changing the analysis or
+  the engine's noise or movement, recalibrate (`calibrate_noise.py`, `calibrate_life.py`, then `calibrate_flicker.py`:
+  docs/MODEL.md).
+- **The harmonics move in patterns** (docs/MODEL.md): each recording's strongest three principal
+  components hold 70 % of its harmonics' movement. Moving each harmonic independently, at the right
+  size and spectrum, sounded weird to the owner (Still Bow, no movement, sounded good): check the
+  structure (`life.py`'s patterns line), not only the size. The level moves below 2 Hz only (a
+  judgment: the recordings' 2-16 Hz level movement, played alone, was heard as random volume jitter).
+  The harmonics' movement is sized per cell by how bands move (`calibrate_flicker.py`): per-harmonic dB
+  readings overstate weak harmonics, and at their size C3's highs fluttered at 15-20 Hz (the owner heard
+  it on low notes only). With the movement on, check the spectrum between the harmonics too: too-fast
+  modulation shows there as noise (the patterns' 16-64 Hz octaves did, 14-25 dB on C3).
+- **The fit counts weak harmonics** (`bodyfit.WEAK`): left out, it predicted the top 8-21 dB too loud.
+- **Presets are settings a player might use**, not the controls' ends (those sounded weird); Body near 0
+  is a sawtooth (the bare Helmholtz motion), and a sine LFO vibrato sounds synthy until Phase 3's.
 - **The movement can't be judged by the distance**: a random path doesn't follow the recording's own
-  (two renders of the same note are 2.8 % apart). Judge it by `tools/life.py`'s statistics, and the
+  (two renders of the same note are 1.2-1.3 % apart; with the first version's movement, 2.8). Judge it by `tools/life.py`'s statistics, and the
   distance's signed differences for bias.
 - **Block-size independence**: everything not per sample runs on the voice's own 32-sample step
   (`kGrid`, counted in the note's time), never per render call; the kit checks blocks of 1-4096.

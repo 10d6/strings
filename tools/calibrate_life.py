@@ -30,6 +30,8 @@ def main():
         new = np.clip(old * ratio ** 0.8, 0.25, 4.0)
         if key == "harm":   # the engine plays a harmonic's own movement up to 16 Hz only (octaves 0-5)
             new[6:] = 1.0
+        if key == "level":  # ... and the level's below 2 Hz only (octaves 0-2: kLevelOcts, a judgment)
+            new[3:] = 1.0
         adj[key] = new.tolist()
         print("%-6s recordings %s\n       renders    %s\n       adjust     %s" % (
             key, " ".join("%.2f" % v for v in rec), " ".join("%.2f" % v for v in ren),

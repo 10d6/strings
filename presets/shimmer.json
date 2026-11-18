@@ -4,11 +4,10 @@
   "patchVersion": 1,
   "name": "Shimmer",
   "tags": [
-    "creative",
     "moving"
   ],
   "params": {
-    "life.flicker": 350,
-    "life.speed": 250
+    "life.flicker": 200,
+    "life.speed": 150
   }
 }

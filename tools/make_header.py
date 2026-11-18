@@ -86,9 +86,13 @@ def main():
     adj_path = os.path.join(os.path.dirname(os.path.abspath(js)), "life_adjust.json")
     if os.path.exists(adj_path):
         adj = json.load(open(adj_path))
-        for key in ("pitch", "level", "harm"):
+        for key in ("pitch", "level"):
             if key in adj:
                 d["life_" + key] = (np.array(d["life_" + key]) * np.array(adj[key])).tolist()
+        if "harm" in adj:   # the harmonics' own movement: its patterns and what is left over
+            h = np.array(adj["harm"])
+            d["life_shape_oct"] = (np.array(d["life_shape_oct"]) * h).tolist()
+            d["life_resid_oct"] = (np.array(d["life_resid_oct"]) * h).tolist()
     on = np.load(npz)
     onsets = on["onsets"].astype(np.float64)
     if "scale" in on:
@@ -97,6 +101,17 @@ def main():
     nN, nD, nB = len(notes), len(dyns), len(bands)
     sr = d["onset_rate"]
     cells = {(c["midi"], c["dyn"]): c for c in d["cells"]}
+    # the harmonics' movement per cell, by how the bands move (tools/calibrate_flicker.py)
+    fadj_path = os.path.join(os.path.dirname(os.path.abspath(js)), "flicker_adjust.json")
+    if os.path.exists(fadj_path):
+        fadj = json.load(open(fadj_path))
+        so, rk = np.array(d["life_shape_oct"]), np.array(d["life_resid_k"])
+        for i, m in enumerate(d["notes"]):
+            for j, dy in enumerate(d["dynamics"]):
+                g = fadj.get("%d_%s" % (m, dy), 1.0)
+                so[i * len(d["dynamics"]) + j] *= g
+                rk[i * len(d["dynamics"]) + j] *= g
+        d["life_shape_oct"], d["life_resid_k"] = so.tolist(), rk.tolist()
     # the noise's calibration (tools/calibrate_noise.py): added to the targets before the solve
     nadj_path = os.path.join(os.path.dirname(os.path.abspath(js)), "noise_adjust.json")
     nadj = json.load(open(nadj_path)) if os.path.exists(nadj_path) else {}
@@ -176,14 +191,19 @@ def main():
         "constexpr float kKnot0 = %s, kKnotStep = %s;   // log2(Hz)" % (ff(d["knots"][0]), ff(d["knots"][1] - d["knots"][0])),
         arr("body[kKnots]", "float", d["body"], ff, 10),
         "// the bow's movement while a note is held (tools/life.py): per note, the rms in each octave of",
-        "// modulation frequency (lower edges kLifeOct0 · 2^i Hz) of its pitch (cents), level (dB) and",
-        "// harmonics' own movement (dB, a mean over harmonics; harmonic k moves lifeK[k] times that)",
+        "// modulation frequency (lower edges kLifeOct0 · 2^i Hz) of its pitch (cents) and level (dB)",
         "constexpr int kOct = %d;" % len(d["life_pitch"][0]),
         "constexpr float kLifeOct0 = 0.25f;",
         arr("lifePitch[kNotes][kOct]", "float", np.array(d["life_pitch"]).flatten(), ff, 8),
         arr("lifeLevel[kNotes][kOct]", "float", np.array(d["life_level"]).flatten(), ff, 8),
-        arr("lifeHarm[kNotes][kOct]", "float", np.array(d["life_harm"]).flatten(), ff, 8),
-        arr("lifeK[kHarm]", "float", d["life_k"], ff, 10),
+        "// the harmonics' own movement (dB, against the level), per note and dynamic from its down-bow",
+        "// recording: kPat shared patterns (a shape over harmonics 1-kPatHarm, and the rms per octave",
+        "// of how it moves), and what is left over, per harmonic (rms) and its spectrum (unit power)",
+        "constexpr int kPat = %d, kPatHarm = %d;" % (len(d["life_shape"][0]), len(d["life_shape"][0][0])),
+        arr("lifeShape[kNotes * kDyns][kPat][kPatHarm]", "float", np.array(d["life_shape"]).flatten(), ff, 10),
+        arr("lifeShapeOct[kNotes * kDyns][kPat][kOct]", "float", np.array(d["life_shape_oct"]).flatten(), ff, 8),
+        arr("lifeResidK[kNotes * kDyns][kHarm]", "float", np.array(d["life_resid_k"]).flatten(), ff, 10),
+        arr("lifeResidOct[kNotes * kDyns][kOct]", "float", np.array(d["life_resid_oct"]).flatten(), ff, 8),
         "// the bow noise's pulse at the string's period, per note, dynamic and band (down bow): its depth",
         "// (2<e cos θ>/<e>) and where in the fundamental's period it peaks (rad)",
         arr("grainDepth[kNotes][kDyns][kBands]", "float", np.array(d["grain_depth"]).flatten(), ff, 9),

@@ -7,7 +7,7 @@
     "unsteady"
   ],
   "params": {
-    "life.amount": 200,
-    "life.speed": 150
+    "life.amount": 150,
+    "life.speed": 120
   }
 }

@@ -30,6 +30,12 @@ The bow's movement while a note is held (tools/life.py, over every sustain's ste
   life      per note (its 4 dynamics × 2 bows pooled, then smoothed across notes): the rms per
             octave of modulation frequency (0.25-32 Hz) of its pitch (cents), its level (dB) and
             its harmonics' own movement against the level (dB, a mean over harmonics)
+  patterns  the harmonics don't move independently but in a few shared patterns (the strongest three
+            hold 70 % of their movement): per note and dynamic, from its down-bow recording (whose
+            onset the engine plays: a note's recordings don't share their patterns), the three
+            principal components of its harmonics' movement (shape over harmonics 1-20), how fast each
+            moves (rms per octave of modulation frequency), and what is left over, per harmonic (rms)
+            and over time (spectrum), played independently
   lifeK     how much more a harmonic moves the higher it is (1.3 dB on the fundamental, about 3 by
             the 20th: a ratio to the mean, a line in log2 k fitted to k ≤ 20, held from 1.25× the
             20th's: a judgment above it)
@@ -53,6 +59,7 @@ import common as C  # noqa: E402
 import harmonics as H  # noqa: E402
 import life as LF  # noqa: E402
 
+NPAT = 3                # the harmonics' shared patterns kept per note
 ONSET_LEN = 0.40
 T_ON, XF = 0.30, 0.10
 T_C = T_ON + XF / 2
@@ -159,8 +166,8 @@ def main():
             pred = B.predict(model, d, r["f0"], len(r["L"]))
             w = B.weights(r["L"])
             g = np.sum(w * (r["L"] - pred)) / np.sum(w)
-            corr = np.where(w > 0, r["L"] - pred - g, 0.0)
-            cell.update(midi=m, dyn=d, corr=np.clip(corr, -24, 24).tolist(), fit_f0=r["f0"])
+            corr = r["L"] - pred - g     # every harmonic: the weakest, near the noise, read high if anything
+            cell.update(midi=m, dyn=d, corr=np.clip(corr, -40, 24).tolist(), fit_f0=r["f0"])
             data["cells"].append(cell)
             data["onset_rate"] = sr
             onsets.append(onset)
@@ -209,6 +216,38 @@ def main():
     law = np.minimum(a0 + a1 * np.log2(kk), 1.25 * (a0 + a1 * np.log2(20)))
     data["life_k"] = law.tolist()
     print("  harmonics move %.2f + %.2f·log2 k times the mean (k ≤ 20 measured)" % (a0, a1))
+    # the patterns: per cell, from the down-bow recording whose onset the engine plays. A note's
+    # recordings don't share them (pooled over its 8, the strongest three hold 48 %; in one, 70 %):
+    # each performance has its own few.
+    shapes, shape_oct, resid_k, resid_oct, explained = [], [], [], [], []
+    for m in notes:
+        for d in C.DYNAMICS:
+            D = stats[(m, d, "d")]["_D"]
+            kl = len(D)
+            w, V = np.linalg.eigh(D @ D.T / D.shape[1])
+            V = V[:, ::-1][:, :NPAT]
+            explained.append(float(w[::-1][:NPAT].sum() / w.sum()))
+            so = np.array([LF.per_octave(V[:, c] @ D) for c in range(NPAT)])
+            R = D - V @ (V.T @ D)
+            rk = R.std(axis=1)
+            ro = np.mean([LF.per_octave(row) for row in R], axis=0)
+            ro = ro / np.sqrt(np.sum(ro ** 2))
+            full = np.zeros(KMAX)
+            full[:kl] = rk
+            full[kl:] = rk[-1]   # above the 20th, as the 20th (a judgment: higher up the recordings'
+            #                      harmonics are too near the noise to measure how they move)
+            sh = np.zeros((NPAT, LF.KMAXL))
+            sh[:, :kl] = V.T
+            shapes.append(sh.tolist())
+            shape_oct.append(so.tolist())
+            resid_k.append(full.tolist())
+            resid_oct.append(ro.tolist())
+    data["life_shape"] = shapes          # [note * dyn][pattern][harmonic]
+    data["life_shape_oct"] = shape_oct   # [note * dyn][pattern][octave]
+    data["life_resid_k"] = resid_k       # [note * dyn][harmonic]
+    data["life_resid_oct"] = resid_oct   # [note * dyn][octave], unit power
+    print("  patterns: the strongest %d hold %.0f %% of the harmonics' movement (median over cells)" % (
+        NPAT, 100 * np.median(explained)))
     # the noise's pulse per cell (down bow); its phase between the bows, as a check it is a property
     gm, gp, agree = [], [], []
     for m in notes:

@@ -34,7 +34,7 @@ python3 -I tools/life.py ../bigcat --render build/strings_render # how notes mov
 ```
 
 The noise and the movement are calibrated against the recordings (`tools/calibrate_noise.py`,
-`tools/calibrate_life.py`; `docs/MODEL.md` has when and how).
+`tools/calibrate_life.py`, `tools/calibrate_flicker.py`; `docs/MODEL.md` has when and how).
 
 (needs `pip install numpy scipy soundfile matplotlib`)
 

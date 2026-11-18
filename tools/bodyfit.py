@@ -32,6 +32,7 @@ import harmonics as H  # noqa: E402
 KNOT_STEP = 1 / 24
 F_LO, F_HI = 55.0, 16000.0
 RANGE_DB = 50.0
+WEAK = 0.1
 LAMBDA = 0.3           # smoothness of B (second differences); 1/24 octave and 0.3 predict unseen notes best (4.05 dB; 1/6 and 3: 5.1)
 KMAX = 160          # harmonics fitted per note (C2: to 10.5 kHz)
 
@@ -63,7 +64,10 @@ def hat(logf, kn):
 
 
 def weights(L):
-    return np.clip((L - (L.max() - RANGE_DB)) / RANGE_DB, 0, 1) ** 0.5
+    """By level: the strongest harmonics count most. Harmonics more than RANGE_DB under the strongest
+    still count a little (WEAK): left out, the fit never saw how the top falls away, and predicted a
+    note's weakest high harmonics 8-21 dB too loud (heard as a fizz, and its flicker as a flutter)."""
+    return np.maximum(np.clip((L - (L.max() - RANGE_DB)) / RANGE_DB, 0, 1) ** 0.5, WEAK)
 
 
 def fit(rows):

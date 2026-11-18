@@ -7,7 +7,7 @@
     "clean"
   ],
   "params": {
-    "tone.noise": -10,
-    "tone.grain": 30
+    "tone.noise": -8,
+    "tone.grain": 50
   }
 }
