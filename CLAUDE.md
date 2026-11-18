@@ -37,6 +37,14 @@ from CI at milestones.
 - The piano repo is the reference for technique: its `docs/MODEL.md` and `docs/TESTING.md`, the
   perceptual distance (`tools/measure/perceptual.py`), the recorded strike, the free-string bank,
   Touch Point, the reverb. Port what fits rather than reinventing it, and say where it came from.
+- **Phase 0** (`docs/PHASE0.md`; `tools/inventory.py`, `tools/bodyfit.py`, `tools/spike.py`): the
+  bigcat cello's names are an octave low (`common.NAME_OCTAVE_OFFSET`); its sustains start at the attack
+  and are cut mid-bow (the release comes from the staccatos); no vibrato. Source × body predicts an unseen
+  note at 4.0 dB per harmonic (neighbour 7.6, other bow 3.1); rebuilt notes are 2.5 % from their
+  recordings (other bow's spectrum 3.6, source × body for an unseen note 7.0, neighbour 13.0). Compare
+  spectra with the envelope and onset shared: whole other takes measure a different performance.
+- Analysis tools read the recordings from a path given on the command line; run them with
+  `python3 -I` from outside the data directory.
 - Measure first, then model; where something can't be measured from these libraries (Bow Position,
   sul ponticello, legato transitions), say it's a judgment.
 

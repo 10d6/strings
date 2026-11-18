@@ -50,7 +50,7 @@ decaying partials. The rest of the piano's pipeline carries over.
 
 ## Phases
 
-0. **Inventory and spike.** Download the sources and record what's actually there (rates, layers,
+0. **Inventory and spike** (done: `docs/PHASE0.md`; the architecture holds). Download the sources and record what's actually there (rates, layers,
    vibrato or not, release samples, licenses). Analyse and resynthesise one cello note, and A/B it
    against its recording. If that isn't convincing, change the architecture before building on it.
 1. **Analysis tools** (`tools/`, Python, offline): f0 and harmonic tracking that survives vibrato,
