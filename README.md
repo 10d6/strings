@@ -1,7 +1,12 @@
 # Strings
 
-A synth built on [synthkit](https://github.com/10d6/synthkit). It runs in the
+A modelled cello and violin built on [synthkit](https://github.com/10d6/synthkit). It runs in the
 browser and as a VST3 / AU plugin.
+
+It is measured from recordings of real instruments, as [Piano](https://github.com/10d6/piano) is:
+the sustain is a model (so it can be bowed continuously, with vibrato, legato and bow controls), and
+only each note's onset is recorded sound. Work in progress: [`docs/PLAN.md`](docs/PLAN.md) has the
+plan, [`docs/SOURCES.md`](docs/SOURCES.md) the recordings and their licenses.
 
 ## Playing it
 

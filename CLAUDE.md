@@ -28,6 +28,18 @@ from CI at milestones.
    parameter is a message (§9b); a look of the synth's own is `ui/page.js`
    (§9a), with `ui/style.css` for styling either page.
 
+## This synth
+
+- A modelled cello and violin in one synth (an Instrument choice), measured from recordings the
+  way `10d6/piano` is: the sustain is modelled, only the onset is recorded audio. `docs/PLAN.md` is
+  the plan and its phases; `docs/SOURCES.md` the recordings and their licenses (keep attribution for
+  any recorded audio that ships).
+- The piano repo is the reference for technique: its `docs/MODEL.md` and `docs/TESTING.md`, the
+  perceptual distance (`tools/measure/perceptual.py`), the recorded strike, the free-string bank,
+  Touch Point, the reverb. Port what fits rather than reinventing it, and say where it came from.
+- Measure first, then model; where something can't be measured from these libraries (Bow Position,
+  sul ponticello, legato transitions), say it's a judgment.
+
 ## Fresh workspace
 
 A new session starts without the toolchains. Install them first (Ubuntu; the
