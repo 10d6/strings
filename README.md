@@ -6,7 +6,30 @@ browser and as a VST3 / AU plugin.
 It is measured from recordings of real instruments, as [Piano](https://github.com/10d6/piano) is:
 the sustain is a model (so it can be bowed continuously, with vibrato, legato and bow controls), and
 only each note's onset is recorded sound. Work in progress: [`docs/PLAN.md`](docs/PLAN.md) has the
-plan, [`docs/SOURCES.md`](docs/SOURCES.md) the recordings and their licenses.
+plan, [`docs/MODEL.md`](docs/MODEL.md) how the cello is modelled today, and
+[`docs/SOURCES.md`](docs/SOURCES.md) the recordings and their licenses.
+
+Today it plays the cello, C2-C6, with velocity choosing the dynamic (p to f): each note starts as
+its recording and hands over to the model, which sustains as long as the key is held. There are no
+bow controls yet.
+
+## The recordings
+
+The model data (`src/CelloData.h`) is measured from the **Karoryfer x bigcat cello** by Karoryfer
+Samples and bigcat instruments, played by Kamila Borowiak
+([CC0](https://github.com/sfzinstruments/karoryfer-bigcat.cello)). It also holds each measured
+note's first 0.4 s as recorded. To measure again:
+
+```
+git clone --depth 1 https://github.com/sfzinstruments/karoryfer-bigcat.cello ../bigcat   # 267 MB
+python3 -I tools/analyze.py ../bigcat tools/cello.json tools/cello_onsets.npz           # ~3 min
+python3 -I tools/make_header.py tools/cello.json tools/cello_onsets.npz src/CelloData.h
+# build, then check against the recordings:
+python3 -I tools/measure.py ../bigcat build/strings_render      # every note and dynamic (~2.5 min)
+python3 -I tools/handoff.py ../bigcat build/strings_render      # the onset's hand-off to the model
+```
+
+(needs `pip install numpy scipy soundfile matplotlib`)
 
 ## Playing it
 
@@ -34,7 +57,9 @@ The browser page and the plugins are built the same way as in synthkit: see
 | | |
 |---|---|
 | `synth.json` | identity (name, IDs, plugin codes) and kit features |
-| `src/` | the sound engine |
+| `src/` | the sound engine (`Synth.cpp`) and the measured data (`CelloData.h`, generated) |
+| `docs/` | the plan, how it's modelled, the recordings, Phase 0's experiments |
+| `tools/` | measuring the recordings, generating the header, comparing renders with the recordings |
 | `presets/` | factory presets (`init.json` is what a new instance starts on) |
 | `tests/` | render scenarios checked in CI |
 | `ui/layout.json` | the panel layout (and `ui/custom.js` for custom widgets, `ui/style.css` for styles, or `ui/page.js` for a page of the synth's own: API.md §9a) |

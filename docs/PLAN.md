@@ -53,10 +53,13 @@ decaying partials. The rest of the piano's pipeline carries over.
 0. **Inventory and spike** (done: `docs/PHASE0.md`; the architecture holds). Download the sources and record what's actually there (rates, layers,
    vibrato or not, release samples, licenses). Analyse and resynthesise one cello note, and A/B it
    against its recording. If that isn't convincing, change the architecture before building on it.
-1. **Analysis tools** (`tools/`, Python, offline): f0 and harmonic tracking that survives vibrato,
+1. **Analysis tools** (done: `docs/MODEL.md`; with a minimal voice that plays the data, so it is checked
+   by rendering: 3.0 % from the recordings) (`tools/`, Python, offline): f0 and harmonic tracking that survives vibrato,
    onset residuals, the source × body factorisation, noise bands, onset envelopes, a header
    generator.
-2. **Engine v1:** harmonic bank, noise and recorded onset; parameters, page, presets, tests, stress.
+2. **Engine v1:** a living sustain (the bow's level and pitch movement, measured from the recordings),
+   noise that pulses with the string, parameters, page, presets. (The harmonic bank, noise and
+   recorded onset are in from Phase 1.)
 3. **Playability:** the controls above.
 4. **Calibration:** the piano's perceptual distance, a leave-one-note-out test, blind listening.
 5. **Violin:** the same pipeline on its data.

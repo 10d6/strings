@@ -33,7 +33,7 @@ KNOT_STEP = 1 / 24
 F_LO, F_HI = 55.0, 12000.0
 RANGE_DB = 50.0
 LAMBDA = 0.3           # smoothness of B (second differences); 1/24 octave and 0.3 predict unseen notes best (4.05 dB; 1/6 and 3: 5.1)
-KMAX = 120
+KMAX = 160          # harmonics fitted per note (C2: to 10.5 kHz)
 
 
 def measure_all(root):
