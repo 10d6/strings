@@ -104,6 +104,21 @@ constexpr float kSympK = 0.55f;
 // (a Gaussian in cents, kWolfWidthC wide) the tone dips by up to kWolfDb × Wolf, kWolfHz times a
 // second (faster the nearer), its rate wandering.
 constexpr float kWolfWidthC = 35, kWolfDb = 14, kWolfHz = 7;
+// Bow Position (a judgment, from bowed-string acoustics: none of the recordings has it). The bowing
+// point β (a share of the string from the bridge) goes from 1/4 (sul tasto, −100 %) through 1/10
+// (normal) to 1/40 (sul ponticello, +100 %). Players slow the bow and press harder near the bridge,
+// which is most of its brilliance: the source moves along the recordings' own dynamics by
+// kPosLayers. The partials with a node at the bowing point are weakened (to kPosNodeFloor, the bow's
+// width filling the rest), the more the further from normal. Past what the dynamics reach, a tilt:
+// glassy near the bridge (the fundamental weaker, the upper partials stronger), soft over the
+// fingerboard; and the bow noise grows at both ends, scratchy at the bridge, airy over the fingerboard.
+constexpr float kPosLayers = 1.0f, kPosNodeFloor = 0.3f;
+constexpr float kPosBeta0 = 0.1f, kPosBridge = 4.f, kPosTasto = 2.5f;
+constexpr float kPosNoiseBridgeDb = 8, kPosNoiseTastoDb = 6;
+// The mute (a judgment, from measurements of violin mutes: every mute dips the bridge's resonance
+// region, a heavy one deeper and wider, and takes the lows and the loudness too). 50 % is about a
+// performance mute, 100 % a heavy practice mute. Not normalised back to the level: a mute is quieter.
+constexpr float kMuteHillHz = 1800, kMuteHillOct = 0.8f, kMuteHillDb = 12, kMuteHighDb = 6, kMuteHeavyDb = 6;
 
 // e^x for gains: 2^f by a 5th-order polynomial (relative error ~2e-7), the exponent in the bits.
 // The browser's expf is a software routine, and this runs per harmonic per step.
@@ -299,6 +314,8 @@ struct StringsVoice : Voice {
   void tuneHarm(int k, float speed);
   float wanderOctaves(BandPass* f, const float* rms, float scale);
   float sustainDyn() const;
+  float posDb(int n) const;
+  float muteDb(float f) const;
   float levelAt(int lo, float tn, float d) const;
 
   Strings& synth;
@@ -384,7 +401,8 @@ struct StringsVoice : Voice {
   // parameter values for this render call
   float pLife = 1, pPitch = 1, pFlicker = 1, pSpeed = 1, pBody = 1, pNoiseDb = 0, pGrain = 1, pRelease = 1;
   float pDyn = 2, pVibDepth = 0, pVibRate = 5.5f, pVibDelay = 0.3f, pVibAttack = 0.5f, pVibVary = 0.4f, pGlide = 0;
-  float pWeight = 0, pSlur = 0.5f, pEven = 1, pSize = 1, pWolf = 0, pWolfHz = 175;
+  float pWeight = 0, pSlur = 0.5f, pEven = 1, pSize = 1, pWolf = 0, pWolfHz = 175, pPos = 0, pMute = 0;
+  float placePos = 0, specMute = 0;
   float specSize = 1;
   float wolfPh = 0, wolfR = 0;
   bool pDynCtl = false;
@@ -395,7 +413,7 @@ struct Strings : Synth {
   Param dynamics, dynMode, strings, vibDepth, vibRate, vibDelay, vibAttack, vibVary, weight, slur, even;
   Param glide, voiceMode;
   Param room, spaceType, spaceDecay, spaceSize, spacePredelay, spaceDamping, spaceEarly, spaceLowCut, spaceHighCut;
-  Param resonance, a4, bodySize, wolf, wolfNote;
+  Param resonance, a4, bodySize, wolf, wolfNote, bowPos, mute;
   // the sympathetic strings: per resonator its state, its turn per sample (free and damped), its string
   float symZr[kSympMax] = {}, symZi[kSympMax] = {}, symPr[kSympMax], symPi[kSympMax], symDr[kSympMax], symDi[kSympMax];
   float symRate[kSympMax];            // the free decay (dB/s)
@@ -446,6 +464,8 @@ struct Strings : Synth {
     resonance = b.add("string.resonance").name("Resonance").range(-40, 24).def(0).unit("dB").modulatable();
     bodySize = b.add("body.size").name("Body Size").range(50, 200).log().def(100).unit("%").modulatable();
     wolf = b.add("body.wolf").name("Wolf").range(0, 100).def(0).unit("%").modulatable();
+    bowPos = b.add("bow.position").name("Bow Position").range(-100, 100).def(0).unit("%").modulatable();
+    mute = b.add("body.mute").name("Mute").range(0, 100).def(0).unit("%").modulatable();
     wolfNote = b.add("body.wolfNote").name("Wolf Note").range(130, 260).log().def(175).unit("Hz");
     b.kitDefault("glide", 0.04);
   }
@@ -676,6 +696,31 @@ void StringsVoice::setRotation(float hz) {
 // through the note (the velocity then sets only the onset: how hard the bow catches).
 float StringsVoice::sustainDyn() const { return pDynCtl ? pDyn : velDyn; }
 
+// Bow Position's change to the source at harmonic n (dB): the bowing point's nodes and the tilt past
+// what the dynamics give.
+float StringsVoice::posDb(int n) const {
+  if (pPos == 0) return 0;
+  const float a = std::fabs(pPos);
+  const float beta = kPosBeta0 * std::pow(pPos > 0 ? kPosBridge : kPosTasto, -pPos);
+  const float sn = std::sin(dsp::kPi * n * beta);
+  const float node = 10.f * std::log10(kPosNodeFloor * kPosNodeFloor + (1 - kPosNodeFloor * kPosNodeFloor) * sn * sn);
+  const float l = std::log2(static_cast<float>(n));
+  float tilt = pPos > 0 ? pPos * (6.f * std::max(0.f, l - 2.f) - (n == 1 ? 6.f : 0.f))
+                        : pPos * 5.f * std::max(0.f, l - 1.585f);   // −5 dB per octave above the 3rd
+  return std::max(-30.f, a * node + tilt);
+}
+
+// The mute's change at frequency f (dB): a dip over the bridge's resonance region, a gentler cut above
+// it, and (past 50 %) the lows and the level with it.
+float StringsVoice::muteDb(float f) const {
+  const float x = std::log2(f / kMuteHillHz) / kMuteHillOct;
+  const float hill = std::exp(-0.5f * x * x);
+  const float u = dsp::clamp(std::log2(f / 600.f) / std::log2(2500.f / 600.f), 0.f, 1.f);
+  const float high = u * u * (3 - 2 * u);
+  const float heavy = std::max(0.f, 2.f * pMute - 1.f);
+  return -pMute * (kMuteHillDb * hill + kMuteHighDb * high) - kMuteHeavyDb * heavy;
+}
+
 // A note's steady level: as its measured neighbours were recorded, or (Even Notes) from a smooth curve
 // along the keyboard, as a player keeps a line even. Each note keeps its own timbre either way.
 float StringsVoice::levelAt(int l, float t, float d) const {
@@ -700,7 +745,12 @@ void StringsVoice::place(float hz) {
   if (k1 > K) extend(k1);
   wLo = std::max(0.f, 1.f - static_cast<float>(midi - cd::noteMidi[lo]) / kCorrSpan);
   wHi = std::max(0.f, 1.f - static_cast<float>(cd::noteMidi[lo + 1] - midi) / kCorrSpan);
-  for (int k = 0; k < K; ++k) srcDb[k] = cd::source[d0][k] + td * (cd::source[d0 + 1][k] - cd::source[d0][k]);
+  // Bow Position moves the source alone along the dynamics (not the measured notes' corrections,
+  // which carry each take's own quirks: C3's mp take has a weak fundamental)
+  const float pDynT = dsp::clamp(tDyn + kPosLayers * pPos, -0.5f, cd::kDyns - 0.5f);
+  const int p0 = dsp::clamp(static_cast<int>(std::floor(pDynT)), 0, cd::kDyns - 2);
+  const float pt = pDynT - p0;
+  for (int k = 0; k < K; ++k) srcDb[k] = cd::source[p0][k] + pt * (cd::source[p0 + 1][k] - cd::source[p0][k]) + posDb(k + 1);
   // the release: each harmonic's band's decay after the bow stops
   const float l2b = std::log2(hz / cd::bandHz[0]);
   for (int k = 0; k < K; ++k) {
@@ -728,6 +778,7 @@ void StringsVoice::place(float hz) {
   placeHz = hz;
   placeDyn = dyn;
   placeWeight = pWeight;
+  placePos = pPos;
   placeEven = pEven;
 }
 
@@ -771,9 +822,13 @@ void StringsVoice::spectrum(float hz) {
   }
   float norm = std::sqrt(2.f) * dsp::dbToGain(level) / std::sqrt(std::max(sum, 1e-30f));
   for (int k = 0; k < K; ++k) target[k] *= norm;
+  // the mute: after the level, so it's quieter
+  if (pMute > 0)
+    for (int k = 0; k < K; ++k) target[k] *= fastExp(kLn10_20 * muteDb((k + 1) * hz));
   specHz = hz;
   specBody = pBody;
   specSize = pSize;
+  specMute = pMute;
 }
 
 // The noise pulse per band: u^p, u = (1 + cos(θ - ψ)) / 2, with p for the measured depth times
@@ -1038,9 +1093,11 @@ void StringsVoice::step(VoiceContext& ctx) {
   if (!released) {
     const bool moved = std::fabs(f / specHz - 1.f) > kRecomputeRatio;
     const bool dynMoved = std::fabs(dyn - placeDyn) > kDynRecompute || std::fabs(pWeight - placeWeight) > kDynRecompute / kWeightLayers
+                          || std::fabs(pPos - placePos) > 0.005f
                           || std::fabs(pEven - placeEven) > 0.01f;
     if (moved || dynMoved) place(f);
-    if (moved || dynMoved || pBody != specBody || std::fabs(pSize / specSize - 1.f) > kRecomputeRatio) spectrum(f);
+    if (moved || dynMoved || pBody != specBody || std::fabs(pSize / specSize - 1.f) > kRecomputeRatio
+        || std::fabs(pMute - specMute) > 0.005f) spectrum(f);
   }
   setRotation(f);
 
@@ -1060,7 +1117,9 @@ void StringsVoice::step(VoiceContext& ctx) {
     }
     fineW = t <= tX1 ? 0.f : 1.f - std::exp(-glideRate * static_cast<float>(t - tX1));
   }
-  if (!released && std::fabs(pGrain - grainAmount) > 0.01f) grainShape(pGrain);
+  // the noise's pulse: harder near the bridge, airy (less of it) over the fingerboard
+  const float grainWant = pGrain * (1.f + 0.5f * std::max(0.f, pPos)) * (1.f - 0.6f * std::max(0.f, -pPos));
+  if (!released && std::fabs(grainWant - grainAmount) > 0.01f) grainShape(grainWant);
   // Each rotator carries its harmonic's amplitude. Aim it at this step's amp × gain × fine detail by a
   // growth per sample folded into its rotation: a smooth (exponential) ramp across the step, at no
   // cost per sample, since a staircase would spread every harmonic into sidebands at the step's rate.
@@ -1119,13 +1178,16 @@ void StringsVoice::render(VoiceContext& ctx, Buffer& out) {
   pSize = ctx.get(synth.bodySize) * 0.01f;
   pWolf = ctx.get(synth.wolf) * 0.01f;
   pWolfHz = ctx.get(synth.wolfNote);
+  pPos = ctx.get(synth.bowPos) * 0.01f;
+  pMute = ctx.get(synth.mute) * 0.01f;
   if (pending && !restart) {
     setup(ctx);
     pending = false;
   }
   const int n = out.frames;
   const float trim = dsp::dbToGain(kTrimDb);
-  const float noiseLevel = dsp::dbToGain(pNoiseDb);
+  const float noiseLevel = dsp::dbToGain(pNoiseDb + std::max(0.f, pPos) * kPosNoiseBridgeDb
+                                         + std::max(0.f, -pPos) * kPosNoiseTastoDb + (pMute > 0 ? muteDb(4000.f) : 0.f));
   float energy = 0;
 
   int i = 0;

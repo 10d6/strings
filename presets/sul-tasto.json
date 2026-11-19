@@ -1,0 +1,15 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Sul Tasto",
+  "tags": [
+    "bow",
+    "soft"
+  ],
+  "params": {
+    "bow.position": -70,
+    "vib.depth": 10,
+    "vib.rate": 5.2
+  }
+}

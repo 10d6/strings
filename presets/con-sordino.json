@@ -1,0 +1,15 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Con Sordino",
+  "tags": [
+    "mute",
+    "vibrato"
+  ],
+  "params": {
+    "body.mute": 50,
+    "vib.depth": 14,
+    "vib.rate": 5.6
+  }
+}
