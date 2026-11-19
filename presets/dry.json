@@ -1,0 +1,12 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Dry (Close Mic)",
+  "tags": [
+    "dry"
+  ],
+  "params": {
+    "space.room": 0
+  }
+}

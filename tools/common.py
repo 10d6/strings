@@ -19,6 +19,9 @@ NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 NAME_OCTAVE_OFFSET = 1
 
 DYNAMICS = ["p", "mp", "mf", "f"]
+# What every render compared with a recording starts from: the recordings are dry and close-miked,
+# so no reverb (the synth's room, Phase 3d, is on by default)
+DRY = {"space.room": 0.0}
 
 
 def midi_of(name):

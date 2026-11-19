@@ -74,6 +74,14 @@ constexpr float kSlurDb = 12, kSlurFallS = 0.015f, kSlurHoldS = 0.05f, kSlurRise
 // bowed strings the brightness follows the bow's force, the level mostly its speed), at the level the
 // dynamic plays. ±100 % is ±1.5 layers, taken past p and f by half a layer at most (extrapolated).
 constexpr float kWeightLayers = 1.5f;
+// The room (synthkit's dsp::Reverb, from 10d6/piano): its level, twice the piano's (a held note
+// masks its own room, where a piano's decay lets it through: at the piano's level, Reverb 20 % was
+// 19 dB under a held note). At the default, 25 %, the room is about 11 dB under a held note; at
+// 100 %, about as loud as it. The spaces are levelled against each other for an impulse through a
+// one-pole low-pass at 800 Hz (about a cello's spectrum, as a piano's).
+constexpr float kWet = 2 * 0.1062f;
+constexpr float kRoomWeightHz = 800.f;
+constexpr float kRoomDefault = 25;
 
 // e^x for gains: 2^f by a 5th-order polynomial (relative error ~2e-7), the exponent in the bits.
 // The browser's expf is a software routine, and this runs per harmonic per step.
@@ -362,6 +370,10 @@ struct Strings : Synth {
   Param life, lifePitch, lifeFlicker, lifeSpeed, body, noise, grain, release;
   Param dynamics, dynMode, strings, vibDepth, vibRate, vibDelay, vibAttack, vibVary, weight, slur, even;
   Param glide, voiceMode;
+  Param room, spaceType, spaceDecay, spaceSize, spacePredelay, spaceDamping, spaceEarly, spaceLowCut, spaceHighCut;
+  // the room: the voices' sum (mono) in, the space's wet signal out, per control block
+  dsp::Reverb reverb;
+  float revIn[32], wetL[32], wetR[32];
   // set in processEvents (a parameter's value at the block's start) and allocateVoice, read by the
   // voice it starts: the string its note was given
   bool perString = false;
@@ -388,11 +400,43 @@ struct Strings : Synth {
     vibDelay = b.add("vib.delay").name("Delay").range(0, 2).def(0.3).unit("s");
     vibAttack = b.add("vib.attack").name("Attack").range(0.05, 3).log().def(0.5).unit("s");
     vibVary = b.add("vib.vary").name("Vary").range(0, 100).def(40).unit("%").modulatable();
+    // the room (the piano's Space controls, the same IDs and ranges): the recordings are dry and
+    // close-miked, which is part of why the tone sounds edgy; a hall around it is what a listener hears
+    room = b.add("space.room").name("Reverb").range(0, 100).def(kRoomDefault).unit("%").modulatable().group("Space");
+    spaceType = b.add("space.type").name("Space").choices({"Room", "Chamber", "Hall", "Cathedral", "Plate"}).def(2).group("Space");
+    spaceDecay = b.add("space.decay").name("Decay").range(25, 300).log().def(100).unit("%").modulatable().group("Space");
+    spaceSize = b.add("space.size").name("Size").range(50, 200).log().def(100).unit("%").modulatable().group("Space");
+    spacePredelay = b.add("space.predelay").name("Pre-delay").range(0, 200).def(0).unit("ms").group("Space");
+    spaceDamping = b.add("space.damping").name("Damping").range(0, 100).def(50).unit("%").modulatable().group("Space");
+    spaceEarly = b.add("space.early").name("Early").range(-30, 6).def(0).unit("dB").group("Space");
+    spaceLowCut = b.add("space.lowcut").name("Low Cut").range(20, 1000).log().def(50).unit("Hz").group("Space");
+    spaceHighCut = b.add("space.highcut").name("High Cut").range(1000, 20000).log().def(16000).unit("Hz").modulatable().group("Space");
     b.kitDefault("glide", 0.04);
   }
   void prepare(const PrepareInfo& info) override {
     glide = info.param("glide");
     voiceMode = info.param("voiceMode");
+    reverb.prepare(static_cast<float>(info.sampleRate), kRoomWeightHz);
+  }
+  // The room after the voices: the dry sound as it is (the voices are mono), the space's wet signal
+  // added in stereo. At Reverb 0 the reverb stops once it has rung out and costs nothing.
+  void processGlobal(GlobalContext& ctx, Buffer& io) override {
+    Ramp mix = ctx.ramp(room);
+    const int n = std::min(io.frames, 32);
+    bool on = false;
+    for (int i = 0; i < n; ++i) {
+      revIn[i] = 0.5f * (io.left[i] + io.right[i]);
+      on = on || mix.at(i) > 0;
+    }
+    dsp::Reverb::Settings st{ctx.choice(spaceType), ctx.get(spaceDecay) * 0.01f, ctx.get(spaceSize) * 0.01f,
+                             ctx.get(spaceDamping), ctx.get(spacePredelay), ctx.get(spaceEarly),
+                             ctx.get(spaceLowCut), ctx.get(spaceHighCut), on};
+    if (!reverb.process(st, revIn, revIn, wetL, wetR, n)) return;
+    for (int i = 0; i < n; ++i) {
+      const float k = mix.at(i) * 0.01f * kWet;
+      io.left[i] += k * wetL[i];
+      io.right[i] += k * wetR[i];
+    }
   }
   void processEvents(EventContext& ctx) override {
     perString = ctx.choice(strings) == 1 && ctx.choice(voiceMode) == 0;
@@ -412,30 +456,49 @@ struct Strings : Synth {
     return pick;
   }
   std::unique_ptr<Voice> makeVoice() override { return std::make_unique<StringsVoice>(*this); }
+
+  // The wander filters' rms for unit noise at the reference speed (they're retuned with Speed; a
+  // band-pass of fixed Q passes power in proportion to its centre, so the rms scales by its root),
+  // and their steady states. Every voice has the same: worked out once per sample rate (in prepare,
+  // which allocates nothing here either).
+  struct WanderStats {
+    float sr = 0;
+    float normOct[cd::kOct], normFlick[kFlickBands];
+    Stationary statOct[cd::kOct], statFlick[kFlickBands];
+  } wander;
+  const WanderStats& wanderStats(float sr) {
+    if (wander.sr == sr) return wander;
+    const float gr = sr / kGrid;
+    for (int o = 0; o < cd::kOct; ++o) {
+      BandPass f;
+      f.set(cd::kLifeOct0 * std::pow(2.f, o + 0.5f), std::sqrt(2.f), gr);
+      wander.normOct[o] = noiseRms(f);
+      wander.statOct[o].of(f);
+    }
+    const float grf = gr / kFlickEvery;
+    LowPass lp;
+    lp.set(kFlickLpHz, grf);
+    for (int j = 0; j < kFlickBands; ++j) {
+      BandPass f;
+      f.set(cd::kLifeOct0 * std::pow(4.f, j + 0.5f), 0.67f, grf);
+      wander.normFlick[j] = noiseRms(f, &lp);   // through the band and the low-pass, as played
+      wander.statFlick[j].of(f);
+    }
+    wander.sr = sr;
+    return wander;
+  }
 };
 
 void StringsVoice::prepare(const PrepareInfo& info) {
   sr = static_cast<float>(info.sampleRate);
   for (int b = 0; b < cd::kBands; ++b)
     for (auto& f : bp[b]) f.set(cd::bandHz[b], cd::kNoiseQ, sr);
-  // the wander filters' rms for unit noise at the reference speed (they're retuned with Speed; a
-  // band-pass of fixed Q passes power in proportion to its centre, so the rms scales by its root)
+  // the wander filters' rms for unit noise at the reference speed, and their steady states: the same
+  // for every voice, so worked out once per sample rate (the synth keeps them) and copied
+  const auto& w = synth.wanderStats(sr);
+  for (int o = 0; o < cd::kOct; ++o) { normOct[o] = w.normOct[o]; statOct[o] = w.statOct[o]; }
+  for (int j = 0; j < kFlickBands; ++j) { normFlick[j] = w.normFlick[j]; statFlick[j] = w.statFlick[j]; }
   const float gr = sr / kGrid;
-  for (int o = 0; o < cd::kOct; ++o) {
-    BandPass f;
-    f.set(cd::kLifeOct0 * std::pow(2.f, o + 0.5f), std::sqrt(2.f), gr);
-    normOct[o] = noiseRms(f);
-    statOct[o].of(f);
-  }
-  const float grf = gr / kFlickEvery;
-  LowPass lp;
-  lp.set(kFlickLpHz, grf);
-  for (int j = 0; j < kFlickBands; ++j) {
-    BandPass f;
-    f.set(cd::kLifeOct0 * std::pow(4.f, j + 0.5f), 0.67f, grf);
-    normFlick[j] = noiseRms(f, &lp);   // through the band and the low-pass, as played
-    statFlick[j].of(f);
-  }
   // vibrato's irregularity: a one-pole on unit-variance draws, scaled to unit rms
   vibA = 1.f - std::exp(-dsp::kTwoPi * kVibVaryHz / gr);
   vibNormVary = 1.f / std::sqrt(vibA / (2.f - vibA));

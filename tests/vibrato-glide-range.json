@@ -1,6 +1,6 @@
 {
  "patch": "init",
- "length": 27.5,
+ "length": 30.5,
  "params": {
   "vib.depth": 50,
   "vib.rate": 9,
@@ -454,7 +454,7 @@
  ],
  "expect": {
   "soundBy": 0.05,
-  "silentAfter": 27.4,
+  "silentAfter": 30.4,
   "peakBelow": -3
  }
 }

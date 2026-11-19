@@ -1,0 +1,18 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Distant Hall",
+  "tags": [
+    "room",
+    "vibrato",
+    "warm"
+  ],
+  "params": {
+    "space.room": 55,
+    "space.predelay": 20,
+    "bow.weight": -40,
+    "vib.depth": 14,
+    "vib.rate": 5.5
+  }
+}

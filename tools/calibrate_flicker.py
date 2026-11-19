@@ -59,7 +59,7 @@ def render(tool, midi, vel, tmp, seed=0):
     ev = []
     for _ in range(seed):            # silent notes ahead of it: the note's random path is another
         ev += [dict(t=0, on=24, vel=1), dict(t=0.001, off=24)]
-    sc = dict(patch="init", sampleRate=44100, length=4.0,
+    sc = dict(patch="init", sampleRate=44100, length=4.0, params=dict(C.DRY),
               events=ev + [dict(t=0, on=int(midi), vel=int(vel)), dict(t=3.8, off=int(midi))])
     js, wav = os.path.join(tmp, "s.json"), os.path.join(tmp, "s.wav")
     with open(js, "w") as f:

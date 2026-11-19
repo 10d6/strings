@@ -88,6 +88,40 @@
       ]
     },
     {
+      "title": "Space",
+      "info": "The room around the cello. The recordings are dry and close-miked, which is part of why the tone sounds edgy; a hall around it is what a listener hears. Reverb 0 is the dry cello. The same reverb as Piano's: early reflections from a model of each space, a smooth feedback tail, so Decay, Size and Damping can be set freely.",
+      "controls": [
+        {
+          "param": "space.room",
+          "size": "large"
+        },
+        {
+          "param": "space.type"
+        },
+        {
+          "param": "space.decay"
+        },
+        {
+          "param": "space.size"
+        },
+        {
+          "param": "space.predelay"
+        },
+        {
+          "param": "space.damping"
+        },
+        {
+          "param": "space.early"
+        },
+        {
+          "param": "space.lowcut"
+        },
+        {
+          "param": "space.highcut"
+        }
+      ]
+    },
+    {
       "kit": "lfo1",
       "title": "LFO",
       "info": "A modulation source for anything in the matrix. For vibrato, use the Vibrato panel: it follows the string and wanders as a player's does."
@@ -123,7 +157,16 @@
     "vib.vary": "How much the vibrato's rate and depth wander, as a player's do. 0 is perfectly regular, which sounds mechanical; 100 % is loose and expressive.",
     "bow.weight": "How heavily the bow sits on the string, at the same loudness: lighter is sweeter and rounder, heavier is brighter with more edge. It plays the spectrum of the cello's own softer or louder bowing (the recordings' dynamics), so the tone tilts gradually from the 5th harmonic up rather than being cut off. 0 is as recorded.",
     "play.slur": "How a slurred note changes (Legato, or One Note Each taking a held string): the tone dips briefly as the finger lifts and lands while the bow goes on, and the vibrato starts again from the note's centre. 0 is a seamless change; 100 % is a clearly articulated one (about 12 dB for 80 ms).",
-    "play.even": "How even the notes are in loudness. The recorded notes were played a few dB louder or softer each (A3 stands out, A4 is soft); a player keeps a line even. 100 % follows a smooth curve along the keyboard; 0 plays each note as recorded. Each note keeps its own tone either way."
+    "play.even": "How even the notes are in loudness. The recorded notes were played a few dB louder or softer each (A3 stands out, A4 is soft); a player keeps a line even. 100 % follows a smooth curve along the keyboard; 0 plays each note as recorded. Each note keeps its own tone either way.",
+    "space.room": "How much of the space you hear. The recordings are close-miked, so 0 is the dry cello; 25 % puts the room about 11 dB under a held note, 100 % about as loud as it.",
+    "space.type": "The space: Room (a small room, 0.6 s), Chamber (1.3 s), Hall (a concert hall, 2.2 s), Cathedral (5 s) or Plate (a bright, dense studio plate, 2.4 s, no reflections). Changing it lets the old space ring out.",
+    "space.decay": "The tail's length against the space's own (its RT60). 100 % is the space as designed.",
+    "space.size": "Scales the tail's delays: smaller is denser and more metallic, larger is grainier and more spacious. The decay time stays. Moving it while a tail rings bends its pitch a little, like a tape.",
+    "space.predelay": "A gap before the reverb starts, on top of the space's own distances: a bigger stage, and a clearer attack.",
+    "space.damping": "How much faster the treble dies than the rest. 50 % is the space's own; 0 % keeps the treble as long as the body (bright, glassy); 100 % makes it die quickly (warm, dark).",
+    "space.early": "The early reflections' level against the tail: up for a sense of walls close by, down for a tail that blooms on its own.",
+    "space.lowcut": "Takes the bass out of the reverb only, so low notes don't turn muddy.",
+    "space.highcut": "Takes the top out of the reverb only, for a softer, more distant space."
   },
   "keyboard": true
 }

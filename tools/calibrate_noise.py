@@ -30,7 +30,7 @@ VEL = {"p": 16, "mp": 48, "mf": 80, "f": 112}
 
 
 def residual_bands(tool, midi, vel, tmp):
-    sc = dict(patch="init", sampleRate=44100, length=3.4,
+    sc = dict(patch="init", sampleRate=44100, length=3.4, params=dict(C.DRY),
               events=[dict(t=0, on=int(midi), vel=int(vel)), dict(t=3.2, off=int(midi))])
     js, wav = os.path.join(tmp, "s.json"), os.path.join(tmp, "s.wav")
     with open(js, "w") as f:

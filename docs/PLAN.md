@@ -66,7 +66,8 @@ decaying partials. The rest of the piano's pipeline carries over.
      string.
    - **3b, articulations:** pizzicato, spiccato, tremolo, natural harmonics.
    - **3c, bow colour:** pressure, position (tasto … ponticello), sordino.
-   - **3d, body and room:** sympathetic strings, wolf tone, body size, a room.
+   - **3d, body and room:** a room (done: synthkit's reverb, from the piano), sympathetic strings,
+     wolf tone, body size.
 4. **Calibration:** the piano's perceptual distance, a leave-one-note-out test, blind listening.
 5. **Violin:** the same pipeline on its data.
 6. **Experiment:** a waveguide bow-friction engine as a second model, judged on the same distance.
