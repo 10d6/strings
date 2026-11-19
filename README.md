@@ -9,12 +9,18 @@ only each note's onset is recorded sound. Work in progress: [`docs/PLAN.md`](doc
 plan, [`docs/MODEL.md`](docs/MODEL.md) how the cello is modelled today, and
 [`docs/SOURCES.md`](docs/SOURCES.md) the recordings and their licenses.
 
-Today it plays the cello, C2-C6, with velocity choosing the dynamic (p to f): each note starts as
-its recording and hands over to the model, which sustains as long as the key is held and moves as a
-bowed note does (its pitch, level and each harmonic wandering, the bow noise pulsing with the string,
-all measured from the recordings). The Bow and Tone panels change how much it moves, how much of the
-body is in the tone, and the bow noise; the presets show the range. There are no bow controls
-(pressure, position, legato) yet.
+Today it plays the cello, C2-C6. Each note starts as its recording and hands over to the model,
+which sustains as long as the key is held and moves as a bowed note does (its pitch, level and each
+harmonic wandering, the bow noise pulsing with the string, all measured from the recordings). It
+plays:
+- **Dynamics:** by velocity (p to f), or from the mod wheel or expression pedal, moving during a note.
+- **Vibrato:** it sweeps the harmonics through the body's narrow resonances.
+- **Legato:** slurs and portamento.
+- **Strings:** one note per string, as on the cello.
+
+The Bow and Tone panels change how much it moves, how much of the body is in the tone, and the bow
+noise; the presets show the range. Bow pressure and position, and articulations (pizzicato,
+spiccato), are still to come.
 
 ## The recordings
 
@@ -26,6 +32,7 @@ note's first 0.4 s as recorded. To measure again:
 ```
 git clone --depth 1 https://github.com/sfzinstruments/karoryfer-bigcat.cello ../bigcat   # 267 MB
 python3 -I tools/analyze.py ../bigcat tools/cello.json tools/cello_onsets.npz           # ~5 min
+python3 -I tools/finebody.py ../bigcat --stats tools/finebody_stats.json                # the body's fine detail
 python3 -I tools/make_header.py tools/cello.json tools/cello_onsets.npz src/CelloData.h
 # build, then check against the recordings:
 python3 -I tools/measure.py ../bigcat build/strings_render      # every note and dynamic (~2.5 min)

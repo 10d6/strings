@@ -1,0 +1,15 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Warm",
+  "tags": [
+    "warm",
+    "vibrato"
+  ],
+  "params": {
+    "bow.weight": -60,
+    "vib.depth": 14,
+    "vib.rate": 5.6
+  }
+}

@@ -1,24 +1,108 @@
 {
-  "theme": { "accent": "#8a4b2a" },
+  "theme": {
+    "accent": "#8a4b2a"
+  },
   "sections": [
-    { "title": "Bow", "info": "How a held note moves: the bow's own unsteadiness, measured from the cello's recordings. Every note moves differently.", "controls": [
-      { "param": "life.amount", "size": "large" },
-      { "param": "life.pitch" },
-      { "param": "life.flicker" },
-      { "param": "life.speed" }
-    ]},
-    { "title": "Tone", "controls": [
-      { "param": "tone.body", "size": "large" },
-      { "param": "tone.noise" },
-      { "param": "tone.grain" }
-    ]},
-    { "title": "Playing", "controls": [
-      { "param": "play.release" }
-    ]},
-    { "kit": "lfo1", "title": "LFO", "info": "Route it to Pitch in the matrix for vibrato (the Vibrato preset does: 5.5 Hz, ±20 cents, fading in). The harmonics move through the body's resonances as it swings. The recordings have no vibrato of their own." },
-    { "kit": "modMatrix", "wide": true },
-    { "kit": "voices" },
-    { "kit": "master" }
+    {
+      "title": "Bow",
+      "info": "How a held note moves: the bow's own unsteadiness, measured from the cello's recordings. Every note moves differently.",
+      "controls": [
+        {
+          "param": "life.amount",
+          "size": "large"
+        },
+        {
+          "param": "life.pitch"
+        },
+        {
+          "param": "life.flicker"
+        },
+        {
+          "param": "life.speed"
+        }
+      ]
+    },
+    {
+      "title": "Tone",
+      "controls": [
+        {
+          "param": "tone.body",
+          "size": "large"
+        },
+        {
+          "param": "bow.weight"
+        },
+        {
+          "param": "tone.noise"
+        },
+        {
+          "param": "tone.grain"
+        }
+      ]
+    },
+    {
+      "title": "Playing",
+      "controls": [
+        {
+          "param": "play.dynamics",
+          "size": "large"
+        },
+        {
+          "param": "play.dynMode"
+        },
+        {
+          "param": "play.strings"
+        },
+        {
+          "param": "play.slur"
+        },
+        {
+          "param": "play.even"
+        },
+        {
+          "param": "play.release"
+        }
+      ],
+      "info": "How the notes are played: where the dynamic comes from, how the strings are shared, how long they ring."
+    },
+    {
+      "title": "Vibrato",
+      "info": "The left hand rocking on the string. As the pitch swings, each harmonic sweeps through the body's narrow resonances and its level rises and falls: that, more than the pitch itself, is what a cello's vibrato sounds like.",
+      "controls": [
+        {
+          "param": "vib.depth",
+          "size": "large"
+        },
+        {
+          "param": "vib.rate"
+        },
+        {
+          "param": "vib.delay"
+        },
+        {
+          "param": "vib.attack"
+        },
+        {
+          "param": "vib.vary"
+        }
+      ]
+    },
+    {
+      "kit": "lfo1",
+      "title": "LFO",
+      "info": "A modulation source for anything in the matrix. For vibrato, use the Vibrato panel: it follows the string and wanders as a player's does."
+    },
+    {
+      "kit": "modMatrix",
+      "wide": true
+    },
+    {
+      "kit": "voices",
+      "info": "Legato slurs a new key from the held one without a new bow stroke, gliding over Glide (40 ms is a finger change; longer is an expressive portamento). Mono bows each note again."
+    },
+    {
+      "kit": "master"
+    }
   ],
   "paramInfo": {
     "life.amount": "How much the held note moves, all of it together: 100 % is the cello's own, as measured from its recordings (its pitch wandering by about 1.5 cents, its level by about 1.4 dB, each harmonic by 1-3 dB on its own). 0 holds the note perfectly still, which sounds synthetic; up to 300 % is a restless, unsteady bow. Listen to a long held note after its first half second.",
@@ -28,7 +112,18 @@
     "tone.body": "How much of the cello's body is in the tone: its resonances, measured from every note of the recordings, which colour each harmonic by where its frequency falls. 0 is the bowed string alone (bare and buzzy); 100 % is the cello; up to 200 % exaggerates the body (hollow and vowel-like). The level stays the same.",
     "tone.noise": "The bow's noise, the rosin's hiss under the note: 0 dB as measured, where it sits 35-45 dB under the tone, so a few dB either way is subtle. Lower is a smoother, cleaner tone; +12 dB and up is clearly airy and scratchy. Most audible on soft and high notes.",
     "tone.grain": "How the bow noise pulses with the string: in the recordings it comes in bursts, once per vibration, as the bow catches and slips (most in the upper bands). 0 is steady hiss beside the note; 100 % is as measured, the noise woven into the tone; higher is gritty and rasping.",
-    "play.release": "How long the strings ring after you let go: 100 % is measured from the cello's staccatos (the low notes ring longest). Lower damps them; higher lets them ring on, as an open string would."
+    "play.release": "How long the strings ring after you let go: 100 % is measured from the cello's staccatos (the low notes ring longest). Lower damps them; higher lets them ring on, as an open string would.",
+    "play.dynamics": "How hard the bow plays the held note, from p (0) to f (100 %), as the cello's recordings were played: louder is also brighter. With Dynamics From set to Controller it follows the mod wheel (CC 1) or expression pedal (CC 11) through the note: swell and fade a held note. With Velocity it isn't used.",
+    "play.dynMode": "Velocity: each note's velocity sets its dynamic for the whole note. Controller: the velocity sets only the attack (how hard the bow catches the string), and Dynamics (the mod wheel or expression pedal) sets the sustain and can move during it, as a player's bow does.",
+    "play.strings": "Free plays every key as its own note. One Note Each plays as a cello does: four strings, one note each. A key goes to the highest string tuned below it; a new note on a string that's ringing bows it again (cutting the ring), and if every string that can play it is held, the highest one slurs to it. Chords spread across strings, and five-note chords can't all sound. Works in Poly.",
+    "vib.depth": "How far the pitch swings either side of the note, in cents, for a note a fifth above its open string; higher up a string the same hand movement swings further, as on the cello. Cellists measure about 10-17 cents; 0 is no vibrato (the recordings have none).",
+    "vib.rate": "How many times a second the pitch swings: cellists measure about 5.3-6.5 Hz. Slower is a wide, romantic vibrato; faster is intense.",
+    "vib.delay": "How long after the bow starts the vibrato begins. Players often start a note straight and let the vibrato bloom.",
+    "vib.attack": "How long the vibrato takes to reach its full depth once it starts.",
+    "vib.vary": "How much the vibrato's rate and depth wander, as a player's do. 0 is perfectly regular, which sounds mechanical; 100 % is loose and expressive.",
+    "bow.weight": "How heavily the bow sits on the string, at the same loudness: lighter is sweeter and rounder, heavier is brighter with more edge. It plays the spectrum of the cello's own softer or louder bowing (the recordings' dynamics), so the tone tilts gradually from the 5th harmonic up rather than being cut off. 0 is as recorded.",
+    "play.slur": "How a slurred note changes (Legato, or One Note Each taking a held string): the tone dips briefly as the finger lifts and lands while the bow goes on, and the vibrato starts again from the note's centre. 0 is a seamless change; 100 % is a clearly articulated one (about 12 dB for 80 ms).",
+    "play.even": "How even the notes are in loudness. The recorded notes were played a few dB louder or softer each (A3 stands out, A4 is soft); a player keeps a line even. 100 % follows a smooth curve along the keyboard; 0 plays each note as recorded. Each note keeps its own tone either way."
   },
   "keyboard": true
 }

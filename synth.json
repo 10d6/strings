@@ -8,7 +8,11 @@
   "patchVersion": 1,
   "features": {
     "voices": 16,
-    "voiceModes": ["poly"],
+    "voiceModes": [
+      "poly",
+      "mono",
+      "legato"
+    ],
     "standardEnvelopes": 0,
     "ampEnv": false,
     "standardLfos": 1,

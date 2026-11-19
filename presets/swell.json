@@ -1,0 +1,14 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Swell (Mod Wheel)",
+  "tags": [
+    "dynamics",
+    "controller"
+  ],
+  "params": {
+    "play.dynMode": 1,
+    "vib.depth": 12
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Singing Legato",
+  "tags": [
+    "vibrato",
+    "legato"
+  ],
+  "params": {
+    "vib.depth": 15,
+    "vib.rate": 5.6,
+    "vib.delay": 0.2,
+    "voiceMode": 2,
+    "glide": 0.06
+  }
+}

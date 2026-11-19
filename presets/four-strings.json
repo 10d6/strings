@@ -1,0 +1,15 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Four Strings",
+  "tags": [
+    "strings",
+    "vibrato"
+  ],
+  "params": {
+    "play.strings": 1,
+    "vib.depth": 12,
+    "vib.rate": 5.8
+  }
+}

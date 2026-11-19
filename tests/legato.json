@@ -1,0 +1,52 @@
+{
+  "patch": "init",
+  "length": 5,
+  "params": {
+    "voiceMode": 2,
+    "glide": 0.1,
+    "vib.depth": 12
+  },
+  "events": [
+    {
+      "t": 0,
+      "on": 48,
+      "vel": 80
+    },
+    {
+      "t": 0.8,
+      "on": 52,
+      "vel": 80
+    },
+    {
+      "t": 0.9,
+      "off": 48
+    },
+    {
+      "t": 1.6,
+      "on": 55,
+      "vel": 80
+    },
+    {
+      "t": 1.7,
+      "off": 52
+    },
+    {
+      "t": 2.4,
+      "on": 36,
+      "vel": 90
+    },
+    {
+      "t": 2.5,
+      "off": 55
+    },
+    {
+      "t": 3.5,
+      "off": 36
+    }
+  ],
+  "expect": {
+    "soundBy": 0.05,
+    "silentAfter": 4.9,
+    "peakBelow": -6
+  }
+}
