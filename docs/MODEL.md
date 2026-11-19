@@ -361,6 +361,32 @@ judgment built on what they do measure; where a number comes from elsewhere it s
 - **What a slur doesn't have**: the left finger's own sound and the bow's small change as the string
   shortens (not measurable here). The kit's legato glides at a constant time whatever the interval.
 
+## The room (Phase 3d)
+
+The recordings are dry and close-miked; a listener hears a cello in a room, and the room is much of
+what takes the edge off a close-miked string. The room is synthkit's `dsp::Reverb` (API.md §8b),
+10d6/piano's Space reverb moved into the kit for this (its docs/MODEL.md, Space, has the design and
+measurements): each space's early reflections are an image-source impulse played by a convolver, its
+tail a 16-line feedback delay network. Room, Chamber, Hall (default), Cathedral and Plate, and the
+piano's controls with the same IDs and ranges (Space panel).
+
+- **After the voices**, in `processGlobal`: the voices are mono, so the dry sound stays as it is and
+  the space's wet signal is added in stereo (its left and right decorrelated: correlation about 0).
+- **Its level** is twice the piano's (`kWet`): a held note masks its own room, where a piano's decay
+  lets it through (at the piano's level, Reverb 20 % put the room 19 dB under a held note). At the
+  default, Hall at 25 %, the room is 11 dB under a held mf note (−20 dB on the legato phrase at 20 %
+  before doubling); at 100 % about as loud as it. A judgment, by those numbers; Dry (Close Mic) and
+  Distant Hall are presets for either end.
+- **Everything compared with a recording renders dry** (`common.DRY`: `space.room` 0 in measure.py,
+  handoff.py, life.py and the calibrations), so none of the measurements move.
+- **Starting.** The kit's reverb prepares every space when the engine starts (37 ms natively, once its
+  tail energies were measured to 0.6 × RT60 and the rest summed: 90 ms at the piano's 1.5 × RT60). In
+  the browser that, on top of every voice working out the same wander-filter statistics, put the first
+  notes 1 s after a click; the synth now works those out once per sample rate and the voices copy them
+  (start-up 275 → 59 ms natively), and the first notes play within 0.5 s again.
+- **Cost** in the browser: about 15 % of a core (four low notes at f: 2.9× realtime with the room, 5.3×
+  dry); natively about 2.6 % of a core. At Reverb 0 it stops once it has rung out and costs nothing.
+
 ## Controls
 
 All are modulation destinations; none is measured except at its default (which is the cello as
@@ -388,13 +414,15 @@ recorded). Ranges and sizes are judgments.
 | Even Notes | `play.even` | 100 % (0-100) | the notes' levels from a smooth curve; 0 as recorded |
 | Bow Weight | `bow.weight` | 0 % (−100…+100) | a lighter (sweeter) or heavier (brighter) bow's spectrum, same level |
 | Voice Mode, Glide | kit | Poly, 40 ms | Legato slurs; Mono bows each note again |
+| Reverb, Space, Decay, Size, Pre-delay, Damping, Early, Low Cut, High Cut | `space.*` | 25 %, Hall | the room (above); the piano's controls |
 
 Life and Flicker multiply, so a harmonic's own movement is held to −40…+12 dB, and the level's to
 ±12 dB. Init has no vibrato (it plays the cello as recorded). Presets: *Still Bow*, *Restless Bow*,
 *Big Body* (140 %), *Airy Bow*, *Smooth Bow*, *Long Ring*, *Shimmer*; and from Phase 3, *Vibrato* (14
 cents, 5.6 Hz), *Singing Legato* (Legato, 60 ms, vibrato 15), *Romantic* (Legato, 180 ms portamento,
 a wider, looser vibrato), *Four Strings* (One Note Each, vibrato 12) and *Swell (Mod Wheel)*
-(Dynamics From Controller); *Warm* (Bow Weight −60 %, vibrato) and *Mellow Legato*. They were first set near the controls' ends to show their range, and sounded like
+(Dynamics From Controller); *Warm* (Bow Weight −60 %, vibrato) and *Mellow Legato*; from 3d, *Dry
+(Close Mic)* (no room) and *Distant Hall* (Reverb 55 %, a lighter bow). They were first set near the controls' ends to show their range, and sounded like
 it (the owner: weird); they are now settings a player might use. Two were dropped: with little body
 the bowed string alone is close to a sawtooth (the Helmholtz motion), which is what *Less Body*
 sounded like; and a sine LFO into Pitch (*Vibrato*) sounded synthy: the onset doesn't follow it and
@@ -437,8 +465,9 @@ so 0 there is by construction (4 cells now play another take's onset: 3.9 % befo
 ## Speed
 
 In the browser (Chromium; `synthkit/web/test/bench-web.cjs`): four low notes at f (C2, G2, D3, A3:
-the most harmonics) 3.3× realtime (Phase 1: 6.8×, Phase 2: 3.5×), the test chord 7.1×, a held
-two-note vibrato 5.6×; native (Release) 23× on the four strings. The body's fine detail costs a
+the most harmonics) 2.9× realtime with the room (5.3× dry, over the scenario's 9 s; 3.3× over its
+first 6 s in Phase 3a, Phase 2: 3.5×, Phase 1: 6.8×), the test chord 4.7× (13× dry); native (Release)
+23× on the four strings. The body's fine detail costs a
 table read and an exp per harmonic per step (it and the vibrato: about 6 %). Low
 notes cost most (160 harmonics); about 60 % of the time is the harmonic bank's rotators, the rest the
 movement's step and the noise (nine bands, each its own random stream). Lessons: the browser's expf/logf are
@@ -452,7 +481,7 @@ time with `-DCMAKE_BUILD_TYPE=Release`.
 ## What isn't modelled (yet)
 
 - The bow's pressure and position, sordino (Phase 3c); pizzicato, spiccato, tremolo, harmonics
-  (3b); sympathetic strings, wolf, body size, a room (3d).
+  (3b); sympathetic strings, wolf, body size (the rest of 3d).
 - The cello's own fine resonances (the engine's fine detail has their statistics, not their shape),
   and a vibrato's swing of the whole level (the detail moves energy between harmonics only).
 - A slur's own sound (the finger, the bow's change as the string shortens); the kit's glide is a

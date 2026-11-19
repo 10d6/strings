@@ -1,6 +1,6 @@
 {
  "patch": "init",
- "length": 9.899999999999999,
+ "length": 12.9,
  "events": [
   {
    "t": 0.2,
@@ -154,7 +154,7 @@
  },
  "expect": {
   "soundBy": 0.3,
-  "silentAfter": 9.799999999999999,
+  "silentAfter": 12.8,
   "peakBelow": -3
  }
 }

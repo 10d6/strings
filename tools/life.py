@@ -130,7 +130,7 @@ def summary(rows, label):
 
 def render(tool, midi, vel, tmp, length=4.2, off=4.0):
     import soundfile as sf
-    sc = dict(patch="init", sampleRate=44100, length=length,
+    sc = dict(patch="init", sampleRate=44100, length=length, params=dict(C.DRY),
               events=[dict(t=0, on=int(midi), vel=int(vel)), dict(t=off, off=int(midi))])
     js, wav = os.path.join(tmp, "s.json"), os.path.join(tmp, "r.wav")
     with open(js, "w") as f:
