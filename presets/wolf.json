@@ -1,0 +1,15 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Old Cello With a Wolf",
+  "tags": [
+    "body",
+    "wolf"
+  ],
+  "params": {
+    "body.wolf": 60,
+    "body.wolfNote": 175,
+    "vib.depth": 12
+  }
+}

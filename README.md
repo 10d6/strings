@@ -18,6 +18,7 @@ plays:
 - **Legato:** slurs and portamento.
 - **Strings:** one note per string, as on the cello.
 - **A room** around it (Hall by default; Room, Chamber, Cathedral, Plate), the same reverb as Piano's.
+- **The instrument:** open strings ringing along, the body's size, and a wolf note if you want one.
 
 The Bow and Tone panels change how much it moves, how much of the body is in the tone, and the bow
 noise; the presets show the range. Bow pressure and position, and articulations (pizzicato,

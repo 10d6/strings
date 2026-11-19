@@ -387,6 +387,52 @@ piano's controls with the same IDs and ranges (Space panel).
 - **Cost** in the browser: about 15 % of a core (four low notes at f: 2.9× realtime with the room, 5.3×
   dry); natively about 2.6 % of a core. At Reverb 0 it stops once it has rung out and costs nothing.
 
+## Sympathetic strings (Phase 3d)
+
+The open strings a note isn't played on ring along with it: the piano's free-string bank (its
+docs/MODEL.md, Sympathetic resonance), for four strings. Each open string's partials up to 2 kHz
+(72 resonators) are narrow complex resonators at the string's pitch, decaying at its measured release
+rate (`releaseDbS` at its note, by octave band), driven by everything the cello plays (the dry sound,
+before the room) through the bridge: z += K·x/fs. The strings are tuned in pure fifths down from A3
+(as cellists tune: C2 6 cents, G2 4, D3 2 under equal temperament), so a coinciding harmonic beats a
+little against its string. A string a note is played on is stopped by the finger (each voice reports
+its string every block, `stopMask`): its open modes die in a third of a second and aren't driven. A
+note on the open string's own pitch is played on the next string down (vibrato, above), so a G2 sets
+the open G ringing.
+
+**What the recordings show** (`tools/sympathy.py`, the staccatos' releases): 0.3 s after a staccato has
+fallen 36 dB, its harmonics on an open string's partial (within 15 cents) are at −79.5 dB against its
+peak, the others at −92.9 (the noise floor): free strings ringing on, 13 dB over the floor. In the
+release itself those harmonics decay more slowly at 125-250 Hz (37 against 48 dB/s), not above 250 Hz.
+
+**The coupling is a judgment** (`kSympK`, scaled by Resonance, −40…+24 dB). Matching that late ring
+(`tools/calibrate_sympathy.py`: the ring alone, the difference of renders with and without it, read at
+the same harmonics and moment) took K = 69/s, at which a held note rings the free strings as loud as
+itself (G3 on the open G 16 dB louder): implausible. A bank driven by the sound can't give both; the
+recordings' late ring is likely the note's own string and its open neighbour coupled, decaying
+together and slower, which this doesn't model. A jolt to every free string at each bow's attack, sized
+to that ring, was tried and put out peaks of +25 dB (the ring sits only near the note's harmonics,
+not at every open partial). And the recordings already hold the cello's own sympathetic ring in their
+measured spectra: at K = 2.2 the bank moved the distance from them (4.2 → 4.5 %). So K = 0.55/s: a note
+with no unison rings the strings 42 dB under itself while held, G3 on the open G 25 dB under; 0.5 s
+after its release G3's ring is 13 dB under its own tail. The distance doesn't move. Resonance +12 dB
+(*Ringing Strings*) is a clear halo; the bank costs about 8 % of the browser's time.
+
+## Body Size and the wolf (Phase 3d)
+
+- **Body Size** (50-200 %): a body larger by λ has its resonances lower by λ, so the body (its fit,
+  the measured notes' corrections and its fine detail) is read at f·λ; the string and its source
+  spectrum stay, and the level. Smaller moves the resonances up, towards a viola's or violin's body: at
+  50 % C3's fundamental is under the body's lowest resonance and nearly gone (23 dB less under 250 Hz),
+  as on a small instrument. Larger moves them down, towards a bass's. A judgment: a real body differs
+  in more than its size. Presets *Small Body* (75 %) and *Big Cello* (135 %).
+- **Wolf** (0-100 %, off by default; the recorded cello has none) and **Wolf Note** (130-260 Hz,
+  default 175, about F3; most cellos' wolves are between E3 and F#3). Where the body's main resonance
+  couples with the string's fundamental, the note can't settle. Near the wolf note (a Gaussian 35 cents
+  wide in the note's pitch) the tone dips by up to 14 dB × Wolf, about 7 times a second (faster the
+  nearer), its rate wandering as the vibrato's does: at 100 % on F3 the level swings 14 dB; five
+  semitones away, nothing. A judgment. Preset *Old Cello With a Wolf* (60 %).
+
 ## Controls
 
 All are modulation destinations; none is measured except at its default (which is the cello as
@@ -415,6 +461,9 @@ recorded). Ranges and sizes are judgments.
 | Bow Weight | `bow.weight` | 0 % (−100…+100) | a lighter (sweeter) or heavier (brighter) bow's spectrum, same level |
 | Voice Mode, Glide | kit | Poly, 40 ms | Legato slurs; Mono bows each note again |
 | Reverb, Space, Decay, Size, Pre-delay, Damping, Early, Low Cut, High Cut | `space.*` | 25 %, Hall | the room (above); the piano's controls |
+| Resonance | `string.resonance` | 0 dB (−40…+24) | the open strings ringing along (above) |
+| Body Size | `body.size` | 100 % (50-200) | the body's resonances moved as a larger or smaller body's |
+| Wolf, Wolf Note | `body.wolf`, `body.wolfNote` | 0 %, 175 Hz | a wolf note: the tone stuttering near it |
 
 Life and Flicker multiply, so a harmonic's own movement is held to −40…+12 dB, and the level's to
 ±12 dB. Init has no vibrato (it plays the cello as recorded). Presets: *Still Bow*, *Restless Bow*,
@@ -422,7 +471,8 @@ Life and Flicker multiply, so a harmonic's own movement is held to −40…+12 d
 cents, 5.6 Hz), *Singing Legato* (Legato, 60 ms, vibrato 15), *Romantic* (Legato, 180 ms portamento,
 a wider, looser vibrato), *Four Strings* (One Note Each, vibrato 12) and *Swell (Mod Wheel)*
 (Dynamics From Controller); *Warm* (Bow Weight −60 %, vibrato) and *Mellow Legato*; from 3d, *Dry
-(Close Mic)* (no room) and *Distant Hall* (Reverb 55 %, a lighter bow). They were first set near the controls' ends to show their range, and sounded like
+(Close Mic)* (no room), *Distant Hall* (Reverb 55 %, a lighter bow), *Ringing Strings*, *Small Body*,
+*Big Cello* and *Old Cello With a Wolf*. They were first set near the controls' ends to show their range, and sounded like
 it (the owner: weird); they are now settings a player might use. Two were dropped: with little body
 the bowed string alone is close to a sawtooth (the Helmholtz motion), which is what *Less Body*
 sounded like; and a sine LFO into Pitch (*Vibrato*) sounded synthy: the onset doesn't follow it and
@@ -465,9 +515,9 @@ so 0 there is by construction (4 cells now play another take's onset: 3.9 % befo
 ## Speed
 
 In the browser (Chromium; `synthkit/web/test/bench-web.cjs`): four low notes at f (C2, G2, D3, A3:
-the most harmonics) 2.9× realtime with the room (5.3× dry, over the scenario's 9 s; 3.3× over its
-first 6 s in Phase 3a, Phase 2: 3.5×, Phase 1: 6.8×), the test chord 4.7× (13× dry); native (Release)
-23× on the four strings. The body's fine detail costs a
+the most harmonics) 2.6× realtime with the room and the sympathetic strings (4.9× dry, over the
+scenario's 9 s; 2.9× and 5.3× before the strings; 3.3× over its first 6 s in Phase 3a, Phase 2:
+3.5×, Phase 1: 6.8×), the test chord 3.8×; native (Release) 23× on the four strings. The body's fine detail costs a
 table read and an exp per harmonic per step (it and the vibrato: about 6 %). Low
 notes cost most (160 harmonics); about 60 % of the time is the harmonic bank's rotators, the rest the
 movement's step and the noise (nine bands, each its own random stream). Lessons: the browser's expf/logf are
@@ -481,7 +531,9 @@ time with `-DCMAKE_BUILD_TYPE=Release`.
 ## What isn't modelled (yet)
 
 - The bow's pressure and position, sordino (Phase 3c); pizzicato, spiccato, tremolo, harmonics
-  (3b); sympathetic strings, wolf, body size (the rest of 3d).
+  (3b).
+- The late ring of the strings coupled to a note's own (sympathetic strings, above: the bank is driven
+  by the sound only).
 - The cello's own fine resonances (the engine's fine detail has their statistics, not their shape),
   and a vibrato's swing of the whole level (the detail moves energy between harmonics only).
 - A slur's own sound (the finger, the bow's change as the string shortens); the kit's glide is a

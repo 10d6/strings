@@ -82,6 +82,28 @@ constexpr float kWeightLayers = 1.5f;
 constexpr float kWet = 2 * 0.1062f;
 constexpr float kRoomWeightHz = 800.f;
 constexpr float kRoomDefault = 25;
+// Sympathetic strings (the piano's free-string bank, for four open strings): each open string's
+// partials up to kSympFMax as narrow resonators, decaying at the string's measured release rate,
+// driven by everything the cello plays (the dry sound) through the bridge. A string a note is
+// played on is stopped by the finger: damped, not driven. tools/sympathy.py measures the ringing in
+// the staccatos' releases, and kSympK is calibrated to it (docs/MODEL.md: Sympathetic strings).
+constexpr int kSympMax = 96;
+constexpr float kSympFMax = 2000;
+constexpr float kSympDampDbS = 300;     // a stopped string's open modes: gone in a third of a second
+// The drive: z += kSympK x / fs. A judgment: a note with no harmonic in unison with an open partial
+// rings the free strings 42 dB under itself while held; one in unison (G3 on the open G) about 25 dB
+// under. The recorded cello's own sympathetic ring is already in its measured spectra: at 12 dB more
+// the bank moved the distance from the recordings (4.2 → 4.5 %), at this it doesn't. The staccatos'
+// late ring (tools/sympathy.py) would need 42 dB more, which makes held notes ring as loud as
+// themselves: a sound-driven bank can't give both (docs/MODEL.md).
+constexpr float kSympK = 0.55f;
+// Body Size: a body larger by λ has its resonances lower by λ, so the body (its fit, the measured
+// notes' corrections and its fine detail) is read at f·λ. The string and its source spectrum stay.
+// The wolf (a judgment: none of the recordings has one): where the body's main resonance couples
+// with the string's fundamental, the note can't settle and its level stutters. Near the wolf note
+// (a Gaussian in cents, kWolfWidthC wide) the tone dips by up to kWolfDb × Wolf, kWolfHz times a
+// second (faster the nearer), its rate wandering.
+constexpr float kWolfWidthC = 35, kWolfDb = 14, kWolfHz = 7;
 
 // e^x for gains: 2^f by a 5th-order polynomial (relative error ~2e-7), the exponent in the bits.
 // The browser's expf is a software routine, and this runs per harmonic per step.
@@ -293,7 +315,7 @@ struct StringsVoice : Voice {
   uint64_t nextSeeds[3] = {1, 1, 1};
 
   // which string, and a slur within it (another key taking the string while it is bowed)
-  int string = 0, assigned = -1;
+  int string = 0, assigned = -1, curString = 0;
   float slurC = 0, slurRate = 0;
   double midiNow = 0, slurFrom = 0;
   bool slurPending = false;
@@ -362,7 +384,9 @@ struct StringsVoice : Voice {
   // parameter values for this render call
   float pLife = 1, pPitch = 1, pFlicker = 1, pSpeed = 1, pBody = 1, pNoiseDb = 0, pGrain = 1, pRelease = 1;
   float pDyn = 2, pVibDepth = 0, pVibRate = 5.5f, pVibDelay = 0.3f, pVibAttack = 0.5f, pVibVary = 0.4f, pGlide = 0;
-  float pWeight = 0, pSlur = 0.5f, pEven = 1;
+  float pWeight = 0, pSlur = 0.5f, pEven = 1, pSize = 1, pWolf = 0, pWolfHz = 175;
+  float specSize = 1;
+  float wolfPh = 0, wolfR = 0;
   bool pDynCtl = false;
 };
 
@@ -371,6 +395,14 @@ struct Strings : Synth {
   Param dynamics, dynMode, strings, vibDepth, vibRate, vibDelay, vibAttack, vibVary, weight, slur, even;
   Param glide, voiceMode;
   Param room, spaceType, spaceDecay, spaceSize, spacePredelay, spaceDamping, spaceEarly, spaceLowCut, spaceHighCut;
+  Param resonance, a4, bodySize, wolf, wolfNote;
+  // the sympathetic strings: per resonator its state, its turn per sample (free and damped), its string
+  float symZr[kSympMax] = {}, symZi[kSympMax] = {}, symPr[kSympMax], symPi[kSympMax], symDr[kSympMax], symDi[kSympMax];
+  float symRate[kSympMax];            // the free decay (dB/s)
+  int symString[kSympMax], symK[kSympMax], symN = 0;
+  float symA4 = -1, symSr = 48000;
+  unsigned stopMask = 0;              // strings a voice played on this block (reported by the voices)
+
   // the room: the voices' sum (mono) in, the space's wet signal out, per control block
   dsp::Reverb reverb;
   float revIn[32], wetL[32], wetR[32];
@@ -411,18 +443,84 @@ struct Strings : Synth {
     spaceEarly = b.add("space.early").name("Early").range(-30, 6).def(0).unit("dB").group("Space");
     spaceLowCut = b.add("space.lowcut").name("Low Cut").range(20, 1000).log().def(50).unit("Hz").group("Space");
     spaceHighCut = b.add("space.highcut").name("High Cut").range(1000, 20000).log().def(16000).unit("Hz").modulatable().group("Space");
+    resonance = b.add("string.resonance").name("Resonance").range(-40, 24).def(0).unit("dB").modulatable();
+    bodySize = b.add("body.size").name("Body Size").range(50, 200).log().def(100).unit("%").modulatable();
+    wolf = b.add("body.wolf").name("Wolf").range(0, 100).def(0).unit("%").modulatable();
+    wolfNote = b.add("body.wolfNote").name("Wolf Note").range(130, 260).log().def(175).unit("Hz");
     b.kitDefault("glide", 0.04);
   }
   void prepare(const PrepareInfo& info) override {
     glide = info.param("glide");
     voiceMode = info.param("voiceMode");
     reverb.prepare(static_cast<float>(info.sampleRate), kRoomWeightHz);
+    a4 = info.param("sk.a4");
+    symSr = static_cast<float>(info.sampleRate);
+    symA4 = -1;
+    for (int i = 0; i < kSympMax; ++i) symZr[i] = symZi[i] = 0;
+
+  }
+
+  // The open strings, tuned in pure fifths down from A3 (as cellists tune), at this A4: each one's
+  // partials up to kSympFMax, their decay from the string's measured release (its octave band).
+  void tuneSympathy(float a4Hz) {
+    symN = 0;
+    float f0 = 0.5f * a4Hz;                       // A3
+    for (int st = kStrings - 1; st >= 0; --st, f0 *= 2.f / 3.f) {
+      int lo; float tn;
+      bracket(kOpen[st], lo, tn);
+      for (int k = 1; k * f0 <= kSympFMax && symN < kSympMax; ++k) {
+        const float f = k * f0;
+        int b = static_cast<int>(std::lround(std::log2(f / cd::bandHz[0])));
+        b = std::max(0, std::min(cd::kBands - 1, b));
+        const float rate = cd::releaseDbS[lo][b] + tn * (cd::releaseDbS[lo + 1][b] - cd::releaseDbS[lo][b]);
+        const float w = dsp::kTwoPi * f / symSr;
+        const float r = std::pow(10.f, -rate / 20.f / symSr), rd = std::pow(10.f, -kSympDampDbS / 20.f / symSr);
+        symPr[symN] = r * std::cos(w); symPi[symN] = r * std::sin(w);
+        symDr[symN] = rd * std::cos(w); symDi[symN] = rd * std::sin(w);
+        symRate[symN] = rate;
+        symString[symN] = st;
+        symK[symN] = k;
+        ++symN;
+      }
+    }
+    symA4 = a4Hz;
+  }
+
+  // The bank for one block: driven by the dry sound x (mono), adding its ring to io.
+  void sympathy(GlobalContext& ctx, Buffer& io, int n) {
+    const float a4Hz = ctx.get(a4);
+    if (a4Hz != symA4) tuneSympathy(a4Hz);
+    const float res = dsp::dbToGain(ctx.get(resonance));
+    const float g = kSympK / symSr * res;
+
+    float x[32], y[32] = {};
+    for (int i = 0; i < n; ++i) x[i] = 0.5f * (io.left[i] + io.right[i]);
+    for (int m = 0; m < symN; ++m) {
+      const bool stopped = (stopMask >> symString[m]) & 1u;
+      float zr = symZr[m], zi = symZi[m];
+      if (stopped && zr * zr + zi * zi < 1e-20f) continue;   // stopped and silent: nothing to do
+      const float pr = stopped ? symDr[m] : symPr[m], pi = stopped ? symDi[m] : symPi[m], gm = stopped ? 0.f : g;
+      for (int i = 0; i < n; ++i) {
+        const float r = zr * pr - zi * pi + gm * x[i];
+        zi = zr * pi + zi * pr;
+        zr = r;
+        y[i] += zr;
+      }
+      symZr[m] = dsp::flushDenormal(zr);
+      symZi[m] = dsp::flushDenormal(zi);
+    }
+    for (int i = 0; i < n; ++i) {
+      io.left[i] += y[i];
+      io.right[i] += y[i];
+    }
   }
   // The room after the voices: the dry sound as it is (the voices are mono), the space's wet signal
   // added in stereo. At Reverb 0 the reverb stops once it has rung out and costs nothing.
   void processGlobal(GlobalContext& ctx, Buffer& io) override {
-    Ramp mix = ctx.ramp(room);
     const int n = std::min(io.frames, 32);
+    sympathy(ctx, io, n);
+    stopMask = 0;
+    Ramp mix = ctx.ramp(room);
     bool on = false;
     for (int i = 0; i < n; ++i) {
       revIn[i] = 0.5f * (io.left[i] + io.right[i]);
@@ -660,13 +758,14 @@ void StringsVoice::extend(int k1) {
 // leaves the level as it is. Harmonics above kFMax go silent (a slur or glide up).
 void StringsVoice::spectrum(float hz) {
   float sum = 0;
-  const float l2 = std::log2(hz);
+  const float l2 = std::log2(hz), l2b = l2 + std::log2(pSize);
   for (int k = 0; k < K; ++k) {
     float f = (k + 1) * hz;
     if (f > cd::kFMax) { target[k] = 0; continue; }
-    float fd = bodyDbLog2(l2 + kLog2K.v[k]);
-    if (wLo > 0) fd += wLo * (corrDb(lo, d0, f) + td * (corrDb(lo, d0 + 1, f) - corrDb(lo, d0, f)));
-    if (wHi > 0) fd += wHi * (corrDb(lo + 1, d0, f) + td * (corrDb(lo + 1, d0 + 1, f) - corrDb(lo + 1, d0, f)));
+    const float fb = f * pSize;   // where on the body this harmonic falls (Body Size)
+    float fd = bodyDbLog2(l2b + kLog2K.v[k]);
+    if (wLo > 0) fd += wLo * (corrDb(lo, d0, fb) + td * (corrDb(lo, d0 + 1, fb) - corrDb(lo, d0, fb)));
+    if (wHi > 0) fd += wHi * (corrDb(lo + 1, d0, fb) + td * (corrDb(lo + 1, d0 + 1, fb) - corrDb(lo + 1, d0, fb)));
     target[k] = fastExp(kLn10_20 * (srcDb[k] + pBody * fd));
     sum += target[k] * target[k];
   }
@@ -674,6 +773,7 @@ void StringsVoice::spectrum(float hz) {
   for (int k = 0; k < K; ++k) target[k] *= norm;
   specHz = hz;
   specBody = pBody;
+  specSize = pSize;
 }
 
 // The noise pulse per band: u^p, u = (1 + cos(θ - ψ)) / 2, with p for the measured depth times
@@ -785,7 +885,7 @@ void StringsVoice::setup(VoiceContext& ctx) {
   noiseRelMul = std::exp(-1.f / (kNoiseReleaseS * sr));
 
   // vibrato starts afresh with each bow
-  string = assigned >= 0 ? assigned : stringFor(midi);
+  string = curString = assigned >= 0 ? assigned : stringFor(midi);
   vibPh = 0;
   vibR = vibD = 0;
   vibDepth = 0;
@@ -824,6 +924,7 @@ void StringsVoice::step(VoiceContext& ctx) {
     slurPending = false;
   }
   if (slurC != 0) slurC = slurC > 0 ? std::max(0.f, slurC - slurRate) : std::min(0.f, slurC + slurRate);
+  curString = assigned >= 0 ? assigned : stringFor(midi);
   if (slurArt) {
     slurArt = false;
     vibT0 = t;
@@ -842,6 +943,18 @@ void StringsVoice::step(VoiceContext& ctx) {
     else if (u < kSlurFallS + hold + rise) w = 0.5f + 0.5f * std::cos(dsp::kPi * (u - kSlurFallS - hold) / rise);
     else { w = 0; artT0 = -1; }
     artGain = std::exp2(-kSlurDb * pSlur * w * (1.f / 6.0206f));
+  }
+  // the wolf: near its note the tone stutters
+  if (pWolf > 0 && bankOn && !released) {
+    const float c = 1200.f * std::log2(static_cast<float>(ctx.pitchHz()) / pWolfHz);
+    const float w = std::exp(-(c * c) / (kWolfWidthC * kWolfWidthC));
+    if (w > 1e-3f) {
+      wolfR += vibA * (vrng.bipolar() * 1.7320508f - wolfR);
+      wolfPh += dsp::kTwoPi * kWolfHz * (0.6f + 0.4f * w) * (1.f + 0.15f * wolfR * vibNormVary) * kGrid / sr;
+      if (wolfPh > dsp::kTwoPi) wolfPh -= dsp::kTwoPi;
+      const float u = 0.5f - 0.5f * std::cos(wolfPh);   // 0 … 1, the dip at its middle
+      artGain *= std::exp2(-kWolfDb * pWolf * w * u * u * (1.f / 6.0206f));
+    }
   }
   midiNow = midi + slurC * 0.01;
 
@@ -895,7 +1008,7 @@ void StringsVoice::step(VoiceContext& ctx) {
     e = e * e * (3 - 2 * e);
     vibR += vibA * (vrng.bipolar() * 1.7320508f - vibR);
     vibD += vibA * (vrng.bipolar() * 1.7320508f - vibD);
-    const int str = assigned >= 0 ? assigned : stringFor(midi);
+    const int str = curString;
     const float want = std::exp2((dsp::clamp(static_cast<float>(midi) - kOpen[str], 0.f, 30.f) - kVibRefSemis) / 12.f);
     vibScale += 0.1f * (want - vibScale);   // a string or position change: over a few ms
     const float wantDepth = pVibDepth * vibScale * e * std::max(0.f, 1.f + kVibVaryDepth * pVibVary * vibD * vibNormVary);
@@ -927,7 +1040,7 @@ void StringsVoice::step(VoiceContext& ctx) {
     const bool dynMoved = std::fabs(dyn - placeDyn) > kDynRecompute || std::fabs(pWeight - placeWeight) > kDynRecompute / kWeightLayers
                           || std::fabs(pEven - placeEven) > 0.01f;
     if (moved || dynMoved) place(f);
-    if (moved || dynMoved || pBody != specBody) spectrum(f);
+    if (moved || dynMoved || pBody != specBody || std::fabs(pSize / specSize - 1.f) > kRecomputeRatio) spectrum(f);
   }
   setRotation(f);
 
@@ -953,7 +1066,7 @@ void StringsVoice::step(VoiceContext& ctx) {
   // cost per sample, since a staircase would spread every harmonic into sidebands at the step's rate.
   // Re-aimed every step from where it is, so rounding never drifts.
   if (bankOn) {
-    const float l2f = std::log2(f);
+    const float l2f = std::log2(f * pSize);
     const float fineK = fineW * pBody * kLog2_10_20;
     const float kNyq = 0.45f * sr / f;   // a harmonic glided up past this would fold over
     // The fine detail moves energy between the harmonics and keeps the total, at once, every step: the
@@ -1003,6 +1116,9 @@ void StringsVoice::render(VoiceContext& ctx, Buffer& out) {
   pWeight = ctx.get(synth.weight) * 0.01f;
   pSlur = ctx.get(synth.slur) * 0.01f;
   pEven = ctx.get(synth.even) * 0.01f;
+  pSize = ctx.get(synth.bodySize) * 0.01f;
+  pWolf = ctx.get(synth.wolf) * 0.01f;
+  pWolfHz = ctx.get(synth.wolfNote);
   if (pending && !restart) {
     setup(ctx);
     pending = false;
@@ -1104,6 +1220,9 @@ void StringsVoice::render(VoiceContext& ctx, Buffer& out) {
     t += seg;
     if (restart) fadeLeft -= seg;
   }
+
+  // the string this note is on is stopped by the finger: its open modes don't ring along
+  if (alive) synth.stopMask |= 1u << curString;
 
   if (released && !restart) {
     float sum = 0;

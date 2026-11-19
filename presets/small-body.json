@@ -1,0 +1,14 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Small Body",
+  "tags": [
+    "body"
+  ],
+  "params": {
+    "body.size": 75,
+    "vib.depth": 14,
+    "vib.rate": 5.8
+  }
+}
