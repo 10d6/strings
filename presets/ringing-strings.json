@@ -1,0 +1,14 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Ringing Strings",
+  "tags": [
+    "resonance",
+    "vibrato"
+  ],
+  "params": {
+    "string.resonance": 12,
+    "vib.depth": 12
+  }
+}

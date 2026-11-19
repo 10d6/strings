@@ -1,0 +1,14 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Big Cello",
+  "tags": [
+    "body"
+  ],
+  "params": {
+    "body.size": 135,
+    "vib.depth": 14,
+    "vib.rate": 5.3
+  }
+}

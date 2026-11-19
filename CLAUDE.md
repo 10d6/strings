@@ -53,14 +53,16 @@ from CI at milestones.
   detail read every step (narrow resonances: what makes vibrato sound like one), octave-band bow noise
   pulsing at the string's period, and a release from the staccatos. Phase 3a added continuous
   dynamics (Velocity or Controller), vibrato, legato slurs and One Note Each (docs/MODEL.md: Playing);
-  3d a room (synthkit's `dsp::Reverb`, the piano's, API.md §8b), Hall at 25 % by default.
+  3d a room (synthkit's `dsp::Reverb`, the piano's, API.md §8b), Hall at 25 % by default, sympathetic
+  open strings (a bank driven by the dry sound; the voices report their string, `stopMask`), Body Size
+  and a wolf (off by default).
 - **After any change to the sound** run and report: `tools/measure.py` (4.2 % median today; timbre
   3.0; other bow 20.1; `--at-recorded-pitch` 3.5, timbre 2.7: the recordings are 3.8 cents rms off
   equal temperament, which the fine detail hears; it plays Even Notes off, each note at its recording's level), `tools/handoff.py` (the render's extra dip at the hand-off: median 0.2 dB),
   `tools/life.py --render` (the movement's statistics against the recordings: docs/MODEL.md's table),
   `--check`, and `stress.py` (`--keys 36-84`, `--mode overlap`, the full range, extremes, and the modes:
   `voiceMode=1`, `voiceMode=2 glide=…`, `play.strings=1`, `play.dynMode=1`; Release 400 % needs
-  `--tail 20`), and browser speed (`bench-web.cjs tests/four-strings.json`: 2.9× today with the room, 5.3× dry). After changing the analysis or
+  `--tail 20`), and browser speed (`bench-web.cjs tests/four-strings.json`: 2.6× today with the room, 4.9× dry). After changing the analysis or
   the engine's noise or movement, recalibrate (`calibrate_noise.py`, `calibrate_life.py`, then `calibrate_flicker.py`:
   docs/MODEL.md).
 - **The harmonics move in patterns** (docs/MODEL.md): each recording's strongest three principal
@@ -84,6 +86,10 @@ from CI at milestones.
 - **Harmonics added mid-note** (a pitch falling past kFMax / K: a slur, a vibrato on the boundary)
   must turn at their own rotation from that step: `place()` runs before `setRotation()`. A stale
   rotation from an earlier note blew one harmonic up to +30 dB (tests/chords-four-strings.json).
+- **Sympathetic strings' coupling is a judgment** (docs/MODEL.md): the staccatos' late ring
+  (`tools/sympathy.py`) would take a coupling at which held notes ring as loud as themselves, and the
+  recordings already hold their own ring (more than K 0.55 moved the distance). Don't "calibrate" it
+  to `calibrate_sympathy.py`; it reports the gap.
 - **Compare with recordings dry**: the tools render with `common.DRY` (`space.room` 0); a new tool
   that renders must too. Scenarios' silent windows allow for the hall's ring-out (RT60 2.2 s).
 - **Start-up** matters in the browser (the test wants voices 0.5 s after a click): work out anything
