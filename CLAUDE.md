@@ -45,17 +45,21 @@ from CI at milestones.
   spectra with the envelope and onset shared: whole other takes measure a different performance.
 - **The engine** (`docs/MODEL.md`): `src/CelloData.h` is generated (`tools/analyze.py` →
   `tools/cello.json` + `tools/cello_onsets.npz`, with `tools/life_adjust.json`,
-  `tools/noise_adjust.json` and `tools/flicker_adjust.json` → `tools/make_header.py`); never edit it by hand. A note is the recorded
+  `tools/noise_adjust.json`, `tools/flicker_adjust.json` and `tools/finebody_stats.json` → `tools/make_header.py`); never edit it by hand. A note is the recorded
   onset (0.4 s, the nearest measured note transposed) crossfading at 0.30-0.40 s into a harmonic bank
   (to 16 kHz) started in phase with it (`handDb`/`handPh` at 0.35 s), then source × body plus the
   measured notes' own corrections (fading over 3 semitones), the bow's measured movement (pitch, level,
-  the harmonics in their recording's own three patterns plus an independent rest), octave-band bow noise pulsing at the string's period, and a release from
-  the staccatos.
-- **After any change to the sound** run and report: `tools/measure.py` (3.8 % median today; timbre
-  2.8; other bow 20.1), `tools/handoff.py` (the render's extra dip at the hand-off: median 0.3 dB),
+  the harmonics in their recording's own three patterns plus an independent rest), the body's fine
+  detail read every step (narrow resonances: what makes vibrato sound like one), octave-band bow noise
+  pulsing at the string's period, and a release from the staccatos. Phase 3a added continuous
+  dynamics (Velocity or Controller), vibrato, legato slurs and One Note Each (docs/MODEL.md: Playing).
+- **After any change to the sound** run and report: `tools/measure.py` (3.9 % median today; timbre
+  3.0; other bow 20.1; `--at-recorded-pitch` 3.4, timbre 2.7: the recordings are 3.8 cents rms off
+  equal temperament, which the fine detail hears), `tools/handoff.py` (the render's extra dip at the hand-off: median 0.2 dB),
   `tools/life.py --render` (the movement's statistics against the recordings: docs/MODEL.md's table),
-  `--check`, and `stress.py` (`--keys 36-84`, `--mode overlap`, the full range, and extremes), and
-  browser speed (`bench-web.cjs tests/four-strings.json`: 3.5× today). After changing the analysis or
+  `--check`, and `stress.py` (`--keys 36-84`, `--mode overlap`, the full range, extremes, and the modes:
+  `voiceMode=1`, `voiceMode=2 glide=…`, `play.strings=1`, `play.dynMode=1`; Release 400 % needs
+  `--tail 20`), and browser speed (`bench-web.cjs tests/four-strings.json`: 3.3× today). After changing the analysis or
   the engine's noise or movement, recalibrate (`calibrate_noise.py`, `calibrate_life.py`, then `calibrate_flicker.py`:
   docs/MODEL.md).
 - **The harmonics move in patterns** (docs/MODEL.md): each recording's strongest three principal
@@ -68,8 +72,19 @@ from CI at milestones.
   it on low notes only). With the movement on, check the spectrum between the harmonics too: too-fast
   modulation shows there as noise (the patterns' 16-64 Hz octaves did, 14-25 dB on C3).
 - **The fit counts weak harmonics** (`bodyfit.WEAK`): left out, it predicted the top 8-21 dB too loud.
+- **The body's fine detail** (`tools/finebody.py`, docs/MODEL.md): its size is measured (the 8 takes of
+  a note share a slope of 0.17-0.42 dB per cent; corrections 3.3 dB rms), its shape is a judgment (a
+  fixed curve with those statistics). It moves energy between the harmonics and keeps the level, at
+  once, every step: riding on the harmonics' 30 ms follow, a slur bumped the level 4 dB. Measured
+  notes keep their own (`corr − fine`).
+- **Calibrations average random paths**: one path's slow movement varies ~25 %; a calibration on one
+  render a cell chases it (`calibrate_flicker.py` renders four; the kit seeds a note by its place in
+  the stream, so silent notes before it give another path).
+- **Harmonics added mid-note** (a pitch falling past kFMax / K: a slur, a vibrato on the boundary)
+  must turn at their own rotation from that step: `place()` runs before `setRotation()`. A stale
+  rotation from an earlier note blew one harmonic up to +30 dB (tests/chords-four-strings.json).
 - **Presets are settings a player might use**, not the controls' ends (those sounded weird); Body near 0
-  is a sawtooth (the bare Helmholtz motion), and a sine LFO vibrato sounds synthy until Phase 3's.
+  is a sawtooth (the bare Helmholtz motion). Init has no vibrato (the recordings have none).
 - **The movement can't be judged by the distance**: a random path doesn't follow the recording's own
   (two renders of the same note are 1.2-1.3 % apart; with the first version's movement, 2.8). Judge it by `tools/life.py`'s statistics, and the
   distance's signed differences for bias.

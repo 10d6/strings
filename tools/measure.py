@@ -84,7 +84,17 @@ def main():
     ap.add_argument("tool")
     ap.add_argument("--json")
     ap.add_argument("--dyn", default="p,mp,mf,f")
+    ap.add_argument("--at-recorded-pitch", action="store_true",
+                    help="render each note at its recording's own pitch (A4 moved per note), so the body's "
+                         "fine detail meets the harmonics where the recording had them (the recordings "
+                         "are 3.8 cents rms off equal temperament)")
+    ap.add_argument("--param", action="append", default=[], help="id=value, for every render")
     a = ap.parse_args()
+    params = {k: float(v) for k, v in (p.split("=") for p in a.param)}
+    fit = {}
+    if a.at_recorded_pitch:
+        cj = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "cello.json")))
+        fit = {(c["midi"], c["dyn"]): c["fit_f0"] for c in cj["cells"]}
     sus = C.sustains(a.root)
     rows = []
     with tempfile.TemporaryDirectory() as tmp:
@@ -94,7 +104,10 @@ def main():
                 oth = next(s for s in sus if s["midi"] == m and s["dyn"] == d and s["bow"] == "g")
                 x, sr = C.load(rec["path"])
                 xo, _ = C.load(oth["path"])
-                y = render(a.tool, m, VEL[d], tmp)
+                pr = dict(params)
+                if (m, d) in fit:
+                    pr["sk.a4"] = 440.0 * fit[(m, d)] / C.mtof(m)
+                y = render(a.tool, m, VEL[d], tmp, params=pr)
                 Nr = P.loudness(x, sr, LEN)
                 r = dict(note=C.note_name(m), midi=m, dyn=d,
                          raw=P.distance(Nr, P.loudness(y, sr, LEN)),
@@ -110,7 +123,7 @@ def main():
         # evenness along the keyboard at mf
         ev = []
         for m in range(36, 85):
-            y = render(a.tool, m, VEL["mf"], tmp)
+            y = render(a.tool, m, VEL["mf"], tmp, params=params)
             ev.append((m,) + steady(y, SR, C.mtof(m)))
         ev = np.array(ev)
         measured = sorted({s["midi"] for s in sus})

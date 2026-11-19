@@ -10,8 +10,13 @@ much as its recordings' (the owner heard fast muting of the highs at 15-20 Hz, w
 a second). So per cell (note and dynamic) this renders the note (its middle velocity, held), takes
 the level of two bands (0.5-2 and 2-8 kHz) every 5 ms, and compares how much it moves (0.25-25 Hz,
 dB rms) with the cell's two recordings (down and up bow); a gain per cell on the harmonics' movement
-(0.8 of the ratio per pass, held within 0.2-2×) that tools/make_header.py applies. Two or three
+(0.8 of the ratio per pass, held within 0.05-2×) that tools/make_header.py applies. Two or three
 passes, make_header.py and a build between. `--report` only measures.
+
+Each cell is rendered with SEEDS random paths (the kit seeds a note by its place in the stream, so a
+few silent notes before it give another path) and their movement averaged: one path's slow movement
+varies by about 25 % from path to path, and a single render had the calibration chasing that (four
+cells pushed to the floor of 0.2 by one path each, where 10 paths show them as their neighbours).
 """
 import json
 import os
@@ -47,9 +52,15 @@ def movement(x, sr, t0=1.0, t1=3.6):
     return np.array(out)
 
 
-def render(tool, midi, vel, tmp):
+SEEDS = 4
+
+
+def render(tool, midi, vel, tmp, seed=0):
+    ev = []
+    for _ in range(seed):            # silent notes ahead of it: the note's random path is another
+        ev += [dict(t=0, on=24, vel=1), dict(t=0.001, off=24)]
     sc = dict(patch="init", sampleRate=44100, length=4.0,
-              events=[dict(t=0, on=int(midi), vel=int(vel)), dict(t=3.8, off=int(midi))])
+              events=ev + [dict(t=0, on=int(midi), vel=int(vel)), dict(t=3.8, off=int(midi))])
     js, wav = os.path.join(tmp, "s.json"), os.path.join(tmp, "s.wav")
     with open(js, "w") as f:
         json.dump(sc, f)
@@ -68,12 +79,12 @@ def main():
         for m in sorted({s["midi"] for s in sus}):
             for d in C.DYNAMICS:
                 rec = np.median([movement(*C.load(s["path"])) for s in sus if s["midi"] == m and s["dyn"] == d], axis=0)
-                ren = movement(*render(tool, m, VEL[d], tmp))
+                ren = np.mean([movement(*render(tool, m, VEL[d], tmp, seed)) for seed in range(SEEDS)], axis=0)
                 ratio = float(np.exp(np.mean(np.log(rec / np.maximum(ren, 1e-3)))))
                 ratios.append((m, d, ratio))
                 key = "%d_%s" % (m, d)
                 if not report:
-                    adj[key] = float(np.clip(adj.get(key, 1.0) * ratio ** 0.8, 0.2, 2.0))
+                    adj[key] = float(np.clip(adj.get(key, 1.0) * ratio ** 0.8, 0.05, 2.0))
     r = np.array([v for _, _, v in ratios])
     worst = sorted(ratios, key=lambda v: abs(np.log(v[2])))[-4:]
     print("bands' movement, recordings over renders: median %.2f, 10-90 %% %.2f-%.2f; furthest: %s" % (

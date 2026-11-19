@@ -1,0 +1,13 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Vibrato",
+  "tags": [
+    "vibrato"
+  ],
+  "params": {
+    "vib.depth": 14,
+    "vib.rate": 5.6
+  }
+}

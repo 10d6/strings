@@ -79,9 +79,19 @@ def ff(v):
     return t + "f"
 
 
+FINE_STEP = 1 / 480   # octaves: the body's fine detail is read every 2.5 cents (its features: about 8)
+
+
 def main():
     js, npz, out = sys.argv[1:4]
     d = json.load(open(js))
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import finebody  # noqa: E402
+    # the body's fine detail (tools/finebody.py): a fixed curve with the measured statistics
+    fine_x0 = d["knots"][0]
+    fine_x = fine_x0 + FINE_STEP * np.arange(int((np.log2(22050.0) - fine_x0) / FINE_STEP) + 2)
+    fine_stats = json.load(open(os.path.join(os.path.dirname(os.path.abspath(js)), "finebody_stats.json")))
+    fine = finebody.fine_curve(fine_x, fine_stats)
     # the movement's calibration (tools/calibrate_life.py), kept apart so re-analysing keeps it
     adj_path = os.path.join(os.path.dirname(os.path.abspath(js)), "life_adjust.json")
     if os.path.exists(adj_path):
@@ -133,7 +143,10 @@ def main():
             hand_db[i, j, :k] = np.clip(np.round(np.array(c["hand_db"]) * 100), -12000, 3000)
             hand_ph[i, j, :k] = np.round(np.array(c["hand_phase"]) / np.pi * 128).astype(int) % 256 - 128 * 0
             kc = len(c["corr"])
-            corr[i, j, :kc] = np.round(np.array(c["corr"]) * 100)
+            # the fine detail is added at every pitch, so a measured note's own correction holds what
+            # the detail doesn't already give at its harmonics: the note still plays as recorded
+            fk = np.interp(np.log2(c["fit_f0"] * np.arange(1, kc + 1)), fine_x, fine)
+            corr[i, j, :kc] = np.round((np.array(c["corr"]) - fk) * 100)
             level[i, j] = c["level"]
             hand_f0[i, j] = c["hand_f0"]
             fit_f0[i, j] = c["fit_f0"]
@@ -190,6 +203,11 @@ def main():
         "constexpr int kKnots = %d;" % len(d["knots"]),
         "constexpr float kKnot0 = %s, kKnotStep = %s;   // log2(Hz)" % (ff(d["knots"][0]), ff(d["knots"][1] - d["knots"][0])),
         arr("body[kKnots]", "float", d["body"], ff, 10),
+        "// the body's fine detail (tools/finebody.py): dB on log2(f) every kFineStep octaves from kKnot0,",
+        "// centi-dB; a fixed curve with the measured slope per band and size, not the cello's own resonances",
+        "constexpr int kFine = %d;" % len(fine),
+        "constexpr float kFineStep = %s;" % ff(FINE_STEP),
+        arr("fine[kFine]", "short", np.round(fine * 100).astype(int), str, 20),
         "// the bow's movement while a note is held (tools/life.py): per note, the rms in each octave of",
         "// modulation frequency (lower edges kLifeOct0 · 2^i Hz) of its pitch (cents) and level (dB)",
         "constexpr int kOct = %d;" % len(d["life_pitch"][0]),

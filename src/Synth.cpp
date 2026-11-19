@@ -39,6 +39,29 @@ constexpr float kLevelLpHz = 3;          // ... updated every 4th step (345 Hz a
 constexpr int kGrainTable = 64;
 constexpr float kLn10_20 = 0.11512925f; // ln(10) / 20
 constexpr float kRecomputeRatio = 1.7345e-3f;  // the spectrum follows the pitch past 3 cents (its detail is 50)
+constexpr float kFollowS = 0.03f;       // after the first glide, the harmonics follow the dynamic and pitch this fast
+constexpr float kRebowS = 0.01f;        // a string bowed again while it sounds: what it played fades over this
+constexpr float kDynRecompute = 0.01f;  // the spectrum follows the dynamic past this much of a layer
+constexpr float kLog2_10_20 = 0.16609640f;  // log2(10) / 20
+// The cello's open strings (C2 G2 D3 A3). A note is played on the highest string tuned below it (an
+// open string's note on the next one down, as a player does to give it vibrato); the lowest notes on C.
+constexpr int kStrings = 4;
+constexpr int kOpen[kStrings] = {36, 43, 50, 57};
+int stringFor(double midi) {
+  int s = 0;
+  for (int c = 1; c < kStrings; ++c)
+    if (kOpen[c] < midi - 0.5) s = c;
+  return s;
+}
+// Vibrato (a judgment, from cellists' measured vibrato: about 5.3-6.5 Hz, 10-17.5 cents either side,
+// wider in cents up the string, where the same movement of the finger is a larger share of the
+// string's length): the depth given is for a note a fifth above its open string, scaled by the
+// string's length there (1/L: 2^(semitones/12)), between the open string and two and a half octaves
+// up it.
+constexpr float kVibRefSemis = 7;
+constexpr float kVibVaryRate = 0.12f;   // at Vary 100 %: the rate wanders by this (rms share)
+constexpr float kVibVaryDepth = 0.5f;   // ... and the depth by this
+constexpr float kVibVaryHz = 1.0f;      // how fast they wander (one-pole)
 
 // e^x for gains: 2^f by a 5th-order polynomial (relative error ~2e-7), the exponent in the bits.
 // The browser's expf is a software routine, and this runs per harmonic per step.
@@ -86,6 +109,17 @@ float bodyDbLog2(float l2) {
   int i = static_cast<int>(x);
   float t = x - i;
   return cd::body[i] + t * (cd::body[i + 1] - cd::body[i]);
+}
+
+// The body's fine detail (dB) at log2(f): narrow resonances the fitted body's 50-cent knots smooth
+// over (tools/finebody.py). Read every step, so a vibrato sweeps the harmonics through it.
+inline float fineDbLog2(float l2) {
+  float x = (l2 - cd::kKnot0) * (1.f / cd::kFineStep);
+  if (x <= 0) return 0.01f * cd::fine[0];
+  if (x >= cd::kFine - 1) return 0.01f * cd::fine[cd::kFine - 1];
+  int i = static_cast<int>(x);
+  float t = x - i;
+  return 0.01f * (cd::fine[i] + t * (cd::fine[i + 1] - cd::fine[i]));
 }
 
 struct InvFitF0 {
@@ -213,26 +247,45 @@ struct StringsVoice : Voice {
   bool active() const override { return alive; }
 
   void setup(VoiceContext& ctx);
+  void place(float hz);               // what depends on where the pitch is and the dynamic
+  void extend(int k1);                // more harmonics, as the pitch falls
   void setRotation(float hz);
   void spectrum(float hz);            // the steady spectrum's targets at this pitch
   void grainShape(float amount);      // the noise pulse's tables
   void step(VoiceContext& ctx);       // one kGrid step of the voice's own time
   void tuneWander(float speed);
+  void tuneHarm(int k, float speed);
   float wanderOctaves(BandPass* f, const float* rms, float scale);
+  float sustainDyn() const;
 
   Strings& synth;
   float sr = 48000;
   bool pending = false, alive = false, releasing = false, released = false;
-  float vel = 0, dyn = 0;
+  float vel = 0, velDyn = 0, dyn = 0;
   long t = 0;                         // samples since the note started
+  uint64_t seedNoise = 1, seedWander = 1, seedVib = 1;
 
-  // where the note sits among the measured ones
+  // a string bowed again while it sounds (or a voice taken): the old sound fades, then the note starts
+  bool restart = false;
+  int fadeLeft = 0, fadeLen = 1;
+  float nextVel = 0;
+  uint64_t nextSeeds[3] = {1, 1, 1};
+
+  // which string, and a slur within it (another key taking the string while it is bowed)
+  int string = 0, assigned = -1;
+  float slurC = 0, slurRate = 0;
+  double midiNow = 0, slurFrom = 0;
+  bool slurPending = false;
+
+  // where the note sits among the measured ones (for the pitch and dynamic it has now)
   int lo = 0, d0 = 0;
-  float tn = 0, td = 0, wLo = 0, wHi = 0, level = 0, hz0 = 0;
+  float tn = 0, td = 0, wLo = 0, wHi = 0, level = 0;
+  float placeHz = 0, placeDyn = -1;
 
   // the onset: which recording, where in it, how fast it is read
   const short* onset = nullptr;
-  double pos = 0, step_ = 1;
+  double pos = 0, step_ = 1, stepBase = 1;
+  float hzOnset = 1;
   float onsetGain = 0, onsetRel = 1, onsetRelMul = 1;
   long tX0 = 0, tX1 = 0, tC = 0;      // the crossfade and the hand-off instant, in samples
 
@@ -241,11 +294,12 @@ struct StringsVoice : Voice {
   bool bankOn = false;
   float zr[kMaxHarm], zi[kMaxHarm], rc[kMaxHarm], rs[kMaxHarm];
   float amp[kMaxHarm], target[kMaxHarm], gain[kMaxHarm], relRate[kMaxHarm];
+  float fineL2[kMaxHarm];             // this step's fine detail per harmonic (log2 of its gain)
 
-  float srcDb[kMaxHarm];              // source part of the steady spectrum (per note, fixed)
+  float srcDb[kMaxHarm];              // source part of the steady spectrum (per dynamic)
   float hand[kMaxHarm], handPh[kMaxHarm];
   float specHz = 0, specBody = -1;    // the pitch and Body the targets were computed for
-  float glideRate = 0;
+  float glideRate = 0, followRate = 0;
 
   // the bow's movement (cents, dB), as band-limited noise per octave, on the kGrid step
   BandPass wPitch[cd::kOct], wLevel[cd::kOct], wHarm[kMaxHarm][kFlickBands];
@@ -266,20 +320,32 @@ struct StringsVoice : Voice {
   float pitchC = 0, levelDb = 0;
   dsp::Rng wrng;
 
+  // vibrato: its phase, its time since the note began, and its slow irregularity
+  float vibPh = 0, vibScale = 1, vibNormVary = 1, vibR = 0, vibD = 0, vibA = 0;
+  dsp::Rng vrng;
+
   // bow noise, pulsing at the string's period
   BandPass bp[cd::kBands][2];
   float noiseGain[cd::kBands];
   float grain[cd::kBands][kGrainTable + 1];
-  float grainDepth[cd::kBands], grainPh[cd::kBands], grainAmount = -1;
+  float grainDepth[cd::kBands], grainPh[cd::kBands], grainAmount = -1, grainDepthAt = -1;
   float noiseDrive = 0, noiseRelMul = 1;
   dsp::Rng rng_;
 
   // parameter values for this render call
   float pLife = 1, pPitch = 1, pFlicker = 1, pSpeed = 1, pBody = 1, pNoiseDb = 0, pGrain = 1, pRelease = 1;
+  float pDyn = 2, pVibDepth = 0, pVibRate = 5.5f, pVibDelay = 0.3f, pVibAttack = 0.5f, pVibVary = 0.4f, pGlide = 0;
+  bool pDynCtl = false;
 };
 
 struct Strings : Synth {
   Param life, lifePitch, lifeFlicker, lifeSpeed, body, noise, grain, release;
+  Param dynamics, dynMode, strings, vibDepth, vibRate, vibDelay, vibAttack, vibVary;
+  Param glide, voiceMode;
+  // set in processEvents (a parameter's value at the block's start) and allocateVoice, read by the
+  // voice it starts: the string its note was given
+  bool perString = false;
+  int allocString = -1;
 
   void defineParams(ParamBuilder& b) override {
     life = b.add("life.amount").name("Life").range(0, 300).def(100).unit("%").modulatable();
@@ -290,6 +356,37 @@ struct Strings : Synth {
     noise = b.add("tone.noise").name("Bow Noise").range(-30, 24).def(0).unit("dB").modulatable();
     grain = b.add("tone.grain").name("Grain").range(0, 300).def(100).unit("%").modulatable();
     release = b.add("play.release").name("Release").range(25, 400).log().def(100).unit("%").modulatable();
+    dynMode = b.add("play.dynMode").name("Dynamics From").choices({"Velocity", "Controller"});
+    dynamics = b.add("play.dynamics").name("Dynamics").range(0, 100).def(67).unit("%").smoothing(30)
+                   .modulatable().cc(1).cc(11);
+    strings = b.add("play.strings").name("Strings").choices({"Free", "One Note Each"});
+    vibDepth = b.add("vib.depth").name("Vibrato").range(0, 50).def(0).unit("ct").modulatable();
+    vibRate = b.add("vib.rate").name("Rate").range(3, 9).def(5.5).unit("Hz").modulatable();
+    vibDelay = b.add("vib.delay").name("Delay").range(0, 2).def(0.3).unit("s");
+    vibAttack = b.add("vib.attack").name("Attack").range(0.05, 3).log().def(0.5).unit("s");
+    vibVary = b.add("vib.vary").name("Vary").range(0, 100).def(40).unit("%").modulatable();
+    b.kitDefault("glide", 0.04);
+  }
+  void prepare(const PrepareInfo& info) override {
+    glide = info.param("glide");
+    voiceMode = info.param("voiceMode");
+  }
+  void processEvents(EventContext& ctx) override {
+    perString = ctx.choice(strings) == 1 && ctx.choice(voiceMode) == 0;
+    for (auto& e : ctx.in()) ctx.out(e);
+  }
+  // One note each: every string plays one note at a time, as on the cello. A note goes to the highest
+  // string tuned below it that isn't playing a held note (re-bowing one that rings); if all of them
+  // are, it takes the highest, as a slur (the left hand moves while the bow goes on).
+  int allocateVoice(const NoteOn& n, VoicePool& pool) override {
+    allocString = -1;
+    if (!perString || pool.size() < kStrings) return pool.defaultAllocate(n);
+    int top = stringFor(n.note), pick = -1;
+    for (int c = top; c >= 0 && pick < 0; --c)
+      if (pool.state(c) != VoicePool::State::Held) pick = c;
+    if (pick < 0) pick = top;
+    allocString = pick;
+    return pick;
   }
   std::unique_ptr<Voice> makeVoice() override { return std::make_unique<StringsVoice>(*this); }
 };
@@ -316,6 +413,17 @@ void StringsVoice::prepare(const PrepareInfo& info) {
     normFlick[j] = noiseRms(f, &lp);   // through the band and the low-pass, as played
     statFlick[j].of(f);
   }
+  // vibrato's irregularity: a one-pole on unit-variance draws, scaled to unit rms
+  vibA = 1.f - std::exp(-dsp::kTwoPi * kVibVaryHz / gr);
+  vibNormVary = 1.f / std::sqrt(vibA / (2.f - vibA));
+  glideRate = 1.f / (kGlideS * sr);
+  followRate = 1.f / (kFollowS * sr);
+}
+
+void StringsVoice::tuneHarm(int k, float speed) {
+  const float grf = sr / kGrid / kFlickEvery;
+  for (int j = 0; j < kFlickBands; ++j) wHarm[k][j].set(cd::kLifeOct0 * std::pow(4.f, j + 0.5f) * speed, 0.67f, grf);
+  wHarmLp[k].set(kFlickLpHz * speed, grf);
 }
 
 void StringsVoice::tuneWander(float speed) {
@@ -328,24 +436,44 @@ void StringsVoice::tuneWander(float speed) {
   }
   wLevelLp.set(kLevelLpHz * speed, gr);
   for (int c = 0; c < cd::kPat; ++c) wPatLp[c].set(kFlickLpHz * speed, gr);
-  const float grf = gr / kFlickEvery;
-  for (int k = 0; k < K; ++k) {
-    for (int j = 0; j < kFlickBands; ++j) wHarm[k][j].set(cd::kLifeOct0 * std::pow(4.f, j + 0.5f) * speed, 0.67f, grf);
-    wHarmLp[k].set(kFlickLpHz * speed, grf);
-  }
+  for (int k = 0; k < K; ++k) tuneHarm(k, speed);
   wSpeed = speed;
 }
 
-void StringsVoice::start(const NoteOn& n, const StartInfo&) {
-  vel = n.vel;
-  dyn = dynOf(n.vel);
+// A new key, a slur, or a string bowed again. The kit's legato (Legato mode) and a key taking a held
+// string (One Note Each) are slurs: the bow goes on and only the pitch moves. A voice that still
+// sounds otherwise (Mono, a re-bowed string, a taken voice) fades what it played, then starts.
+void StringsVoice::start(const NoteOn& n, const StartInfo& s) {
   auto& r = rng();
-  rng_.seed(static_cast<uint64_t>(r.integer(1, 1 << 30)));
-  wrng.seed(static_cast<uint64_t>(r.integer(1, 1 << 30)));
+  const int str = synth.allocString;
+  const bool held = alive && !releasing && !restart;
+  if (s.legato || (s.sounding && str >= 0 && held)) {
+    velDyn = dynOf(n.vel);
+    if (!s.legato) {          // the kit glides only in its own legato: a string slur glides here
+      slurFrom = midiNow;
+      slurPending = true;
+    }
+    if (str >= 0) assigned = str;
+    return;
+  }
+  uint64_t seeds[3];
+  for (auto& v : seeds) v = static_cast<uint64_t>(r.integer(1, 1 << 30));
+  assigned = str;
+  if (s.sounding && alive && !pending) {
+    restart = true;
+    fadeLen = fadeLeft = std::max(1, static_cast<int>(kRebowS * sr));
+    nextVel = n.vel;
+    for (int j = 0; j < 3; ++j) nextSeeds[j] = seeds[j];
+    releasing = false;
+    return;
+  }
+  vel = n.vel;
+  seedNoise = seeds[0]; seedWander = seeds[1]; seedVib = seeds[2];
   pending = true;
   alive = true;
   releasing = released = false;
   bankOn = false;
+  restart = false;
   t = 0;
 }
 
@@ -359,20 +487,90 @@ void StringsVoice::setRotation(float hz) {
   }
 }
 
-// The steady spectrum at a pitch: the source (fixed for the note) plus the parts that belong to
+// The dynamic the sustain plays at: the key's velocity, or the Dynamics control (CC 1 and 11) moving
+// through the note (the velocity then sets only the onset: how hard the bow catches).
+float StringsVoice::sustainDyn() const { return pDynCtl ? pDyn : velDyn; }
+
+// Everything that depends on where the pitch is among the measured notes and on the dynamic: the level,
+// the source, the corrections' weights, the release, the movement's size, the noise. Called as the
+// pitch moves (a slur, a bend, a glide) or the dynamic does.
+void StringsVoice::place(float hz) {
+  const double midi = 69.0 + 12.0 * std::log2(hz / 440.0);
+  bracket(midi, lo, tn);
+  d0 = std::min(static_cast<int>(dyn), cd::kDyns - 2);
+  td = dyn - d0;
+  level = cellLerp(lo, tn, dyn, [](int a, int b) { return cd::level[a][b]; });
+  int k1 = std::max(1, std::min(kMaxHarm, static_cast<int>(cd::kFMax / hz)));
+  if (k1 > K) extend(k1);
+  wLo = std::max(0.f, 1.f - static_cast<float>(midi - cd::noteMidi[lo]) / kCorrSpan);
+  wHi = std::max(0.f, 1.f - static_cast<float>(cd::noteMidi[lo + 1] - midi) / kCorrSpan);
+  for (int k = 0; k < K; ++k) srcDb[k] = cd::source[d0][k] + td * (cd::source[d0 + 1][k] - cd::source[d0][k]);
+  // the release: each harmonic's band's decay after the bow stops
+  const float l2b = std::log2(hz / cd::bandHz[0]);
+  for (int k = 0; k < K; ++k) {
+    int b = static_cast<int>(std::lround(l2b + kLog2K.v[k]));
+    b = std::max(0, std::min(cd::kBands - 1, b));
+    float rr = cd::releaseDbS[lo][b] + tn * (cd::releaseDbS[lo + 1][b] - cd::releaseDbS[lo][b]);
+    relRate[k] = -rr / sr * kLn10_20;   // dB/s → ln gain per sample
+  }
+  for (int o = 0; o < cd::kOct; ++o) {
+    rmsPitch[o] = cd::lifePitch[lo][o] + tn * (cd::lifePitch[lo + 1][o] - cd::lifePitch[lo][o]);
+    rmsLevel[o] = o < kLevelOcts ? cd::lifeLevel[lo][o] + tn * (cd::lifeLevel[lo + 1][o] - cd::lifeLevel[lo][o]) : 0.f;
+  }
+  // bow noise, as measured, for unit-variance noise at the data's rate
+  float moved = 0;
+  for (int b = 0; b < cd::kBands; ++b) {
+    float g = cellLerp(lo, tn, dyn, [b](int a, int c) { return cd::noiseDb[a][c][b]; });
+    // noiseDb: the band's power re the harmonic rms (level), in dB; for noise at sr rather than the
+    // data's rate the same filter passes kOnsetRate / sr as much power
+    noiseGain[b] = dsp::dbToGain(g + level) * std::sqrt(sr / cd::kOnsetRate);
+    float gd = cellLerp(lo, tn, dyn, [b](int a, int c) { return cd::grainDepth[a][c][b]; });
+    moved = std::max(moved, std::fabs(gd - grainDepth[b]));
+    grainDepth[b] = gd;
+  }
+  if (moved > 0.01f) grainAmount = -1;   // the pulse's tables follow
+  placeHz = hz;
+  placeDyn = dyn;
+}
+
+// Harmonics added as the pitch falls (a slur or glide down): silent, in their steady state, rising
+// to their targets with the rest.
+void StringsVoice::extend(int k1) {
+  for (int k = K; k < k1; ++k) {
+    amp[k] = 0;
+    target[k] = 0;
+    zr[k] = 1e-12f;
+    zi[k] = 0;
+    rc[k] = 1;      // still, until the step sets its rotation (never another note's left over)
+    rs[k] = 0;
+    gain[k] = 1;
+    flick[k] = 1;
+    hand[k] = 0;
+    handPh[k] = 0;
+    tuneHarm(k, wSpeed > 0 ? wSpeed : 1.f);
+    for (int j = 0; j < kFlickBands; ++j) statFlick[j].draw(wHarm[k][j], wrng);
+    wHarmLp[k].reset();
+  }
+  K = k1;
+}
+
+// The steady spectrum at a pitch: the source (by harmonic number) plus the parts that belong to
 // frequency, the body and the measured notes' corrections, scaled by Body; normalised to the level.
+// The body's fine detail is read every step and moves energy between the harmonics (below), so it
+// leaves the level as it is. Harmonics above kFMax go silent (a slur or glide up).
 void StringsVoice::spectrum(float hz) {
   float sum = 0;
   const float l2 = std::log2(hz);
   for (int k = 0; k < K; ++k) {
     float f = (k + 1) * hz;
+    if (f > cd::kFMax) { target[k] = 0; continue; }
     float fd = bodyDbLog2(l2 + kLog2K.v[k]);
     if (wLo > 0) fd += wLo * (corrDb(lo, d0, f) + td * (corrDb(lo, d0 + 1, f) - corrDb(lo, d0, f)));
     if (wHi > 0) fd += wHi * (corrDb(lo + 1, d0, f) + td * (corrDb(lo + 1, d0 + 1, f) - corrDb(lo + 1, d0, f)));
     target[k] = fastExp(kLn10_20 * (srcDb[k] + pBody * fd));
     sum += target[k] * target[k];
   }
-  float norm = std::sqrt(2.f) * dsp::dbToGain(level) / std::sqrt(sum);
+  float norm = std::sqrt(2.f) * dsp::dbToGain(level) / std::sqrt(std::max(sum, 1e-30f));
   for (int k = 0; k < K; ++k) target[k] *= norm;
   specHz = hz;
   specBody = pBody;
@@ -399,27 +597,35 @@ void StringsVoice::grainShape(float amount) {
   grainAmount = amount;
 }
 
-// Everything that depends on the note's pitch, read at its first render (parameters and the
-// pitch are available there: API.md §4).
+// Everything a new note starts from, read at its first render (parameters and the pitch are
+// available there: API.md §4).
 void StringsVoice::setup(VoiceContext& ctx) {
-  double midi = ctx.pitch();
-  float hz = static_cast<float>(ctx.pitchHz());
-  hz0 = hz;
-  bracket(midi, lo, tn);
-  d0 = std::min(static_cast<int>(dyn), cd::kDyns - 2);
-  td = dyn - d0;
-  level = cellLerp(lo, tn, dyn, [](int a, int b) { return cd::level[a][b]; });
+  rng_.seed(seedNoise);
+  wrng.seed(seedWander);
+  vrng.seed(seedVib);
+  const double midi = ctx.pitch();
+  const float hz = static_cast<float>(ctx.pitchHz());
+  midiNow = midi;
+  velDyn = dynOf(vel);
+  dyn = sustainDyn();
+  K = 0;
+  wSpeed = pSpeed;
+  for (auto& g : grainDepth) g = 0;
+  place(hz);
 
-  // the onset: the nearest measured note's, at the nearest dynamic, transposed to this pitch
+  // the onset: the nearest measured note's, at the velocity's nearest dynamic, transposed to this pitch
   int on = tn < 0.5f ? lo : lo + 1;
   if (midi <= cd::noteMidi[0]) on = 0;
   if (midi >= cd::noteMidi[cd::kNotes - 1]) on = cd::kNotes - 1;
-  int od = std::min(cd::kDyns - 1, static_cast<int>(dyn + 0.5f));
+  int od = std::min(cd::kDyns - 1, static_cast<int>(velDyn + 0.5f));
   onset = cd::onset[on * cd::kDyns + od];
   float ratio = hz / cd::handF0[on][od];
-  step_ = ratio * cd::kOnsetRate / sr;
+  stepBase = step_ = ratio * cd::kOnsetRate / sr;
+  hzOnset = hz;
   pos = 0;
-  float cellDb = level - cd::level[on][od];
+  // the onset plays at the velocity's level (the sustain may be at another: Dynamics From Controller)
+  float onsetLevel = cellLerp(lo, tn, velDyn, [](int a, int b) { return cd::level[a][b]; });
+  float cellDb = onsetLevel - cd::level[on][od];
   onsetGain = dsp::dbToGain(cellDb) * cd::kOnsetScale;
   onsetRel = 1;
   onsetRelMul = dsp::dbToGain(-kOnsetReleaseDbS / sr);
@@ -427,11 +633,6 @@ void StringsVoice::setup(VoiceContext& ctx) {
   tX1 = static_cast<long>((cd::kTOn + cd::kXf) * cd::kOnsetRate / step_);
   tC = static_cast<long>(cd::kTC * cd::kOnsetRate / step_);
 
-  // the steady spectrum: source x body, plus the measured notes' own corrections nearby
-  K = std::max(1, std::min(kMaxHarm, static_cast<int>(cd::kFMax / hz)));
-  wLo = std::max(0.f, 1.f - static_cast<float>(midi - cd::noteMidi[lo]) / kCorrSpan);
-  wHi = std::max(0.f, 1.f - static_cast<float>(cd::noteMidi[lo + 1] - midi) / kCorrSpan);
-  for (int k = 0; k < K; ++k) srcDb[k] = cd::source[d0][k] + td * (cd::source[d0 + 1][k] - cd::source[d0][k]);
   pBody = ctx.get(synth.body) * 0.01f;
   spectrum(hz);
 
@@ -444,20 +645,6 @@ void StringsVoice::setup(VoiceContext& ctx) {
     flick[k] = 1;
   }
 
-  // the release: each harmonic's band's decay after the bow stops
-  for (int k = 0; k < K; ++k) {
-    float f = (k + 1) * hz;
-    int b = static_cast<int>(std::lround(std::log2(f / cd::bandHz[0])));
-    b = std::max(0, std::min(cd::kBands - 1, b));
-    float r = cd::releaseDbS[lo][b] + tn * (cd::releaseDbS[lo + 1][b] - cd::releaseDbS[lo][b]);
-    relRate[k] = -r / sr * kLn10_20;   // dB/s → ln gain per sample
-  }
-
-  // the bow's movement: this note's spectra, the filters' state from rest
-  for (int o = 0; o < cd::kOct; ++o) {
-    rmsPitch[o] = cd::lifePitch[lo][o] + tn * (cd::lifePitch[lo + 1][o] - cd::lifePitch[lo][o]);
-    rmsLevel[o] = o < kLevelOcts ? cd::lifeLevel[lo][o] + tn * (cd::lifeLevel[lo + 1][o] - cd::lifeLevel[lo][o]) : 0.f;
-  }
   // the harmonics' own movement: the onset's cell's patterns (the same recording), and its leftover
   // part's spectrum split into the three two-octave bands (up to 16 Hz: the rest is closed off)
   const int cell = on * cd::kDyns + od;
@@ -489,20 +676,21 @@ void StringsVoice::setup(VoiceContext& ctx) {
   }
   pitchC = levelDb = 0;
 
-  // bow noise, as measured, for unit-variance noise at the data's rate
   for (int b = 0; b < cd::kBands; ++b) {
-    float g = cellLerp(lo, tn, dyn, [b](int a, int c) { return cd::noiseDb[a][c][b]; });
-    // noiseDb: the band's power re the harmonic rms (level), in dB; for noise at sr rather than the
-    // data's rate the same filter passes kOnsetRate / sr as much power
-    noiseGain[b] = dsp::dbToGain(g + level) * std::sqrt(sr / cd::kOnsetRate);
-    grainDepth[b] = cellLerp(lo, tn, dyn, [b](int a, int c) { return cd::grainDepth[a][c][b]; });
     grainPh[b] = cd::grainPhase[on][od][b];
     for (auto& f : bp[b]) f.reset();
   }
   grainAmount = -1;
   noiseDrive = 0;
   noiseRelMul = std::exp(-1.f / (kNoiseReleaseS * sr));
-  glideRate = 1.f / (kGlideS * sr);
+
+  // vibrato starts afresh with each bow
+  string = assigned >= 0 ? assigned : stringFor(midi);
+  vibPh = 0;
+  vibR = vibD = 0;
+  vibScale = std::exp2((dsp::clamp(static_cast<float>(midi) - kOpen[string], 0.f, 30.f) - kVibRefSemis) / 12.f);
+  slurC = slurRate = 0;
+  slurPending = false;
   setRotation(hz);
 }
 
@@ -516,11 +704,21 @@ float StringsVoice::wanderOctaves(BandPass* f, const float* rms, float scale) {
   return y * scale;
 }
 
-// One kGrid step of the voice's own time: the bow's movement, the spectrum following the pitch,
-// the glide and the release. Done on the voice's clock, never per render call, so the result
-// doesn't depend on the block size.
+// One kGrid step of the voice's own time: the bow's movement, vibrato, the spectrum following the
+// pitch and the dynamic, the glide and the release. Done on the voice's clock, never per render
+// call, so the result doesn't depend on the block size.
 void StringsVoice::step(VoiceContext& ctx) {
-  float hz = static_cast<float>(ctx.pitchHz());
+  const float hz = static_cast<float>(ctx.pitchHz());
+  const double midi = ctx.pitch();
+
+  // a slur within a string (One Note Each): from the old pitch to the new over the glide time
+  if (slurPending) {
+    slurC = static_cast<float>((slurFrom - midi) * 100.0);
+    slurRate = pGlide > 0.0005f ? std::fabs(slurC) / (pGlide * sr) * kGrid : 1e9f;
+    slurPending = false;
+  }
+  if (slurC != 0) slurC = slurC > 0 ? std::max(0.f, slurC - slurRate) : std::min(0.f, slurC + slurRate);
+  midiNow = midi + slurC * 0.01;
 
   // the life comes in once the hand-off is over (during it the model must match the recording);
   // it stops moving when the bow leaves
@@ -547,7 +745,7 @@ void StringsVoice::step(VoiceContext& ctx) {
       // unit-variance uniform draws: the narrow filters make their output Gaussian enough, and a
       // normal draw costs a log, a cos and a square root
       for (int j = 0; j < kFlickBands; ++j) h += wHarm[k][j].process(wrng.bipolar() * 1.7320508f) * rmsHarm[j] / normFlick[j];
-      h = wHarmLp[k].process(h) * residK[k];
+      h = wHarmLp[k].process(h) * residK[std::min(k, kMaxHarm - 1)];
       if (k < cd::kPatHarm)
         for (int c = 0; c < cd::kPat; ++c) h += shape[c][k] * score[c];
       // a harmonic can sink far but rise only so much: Life and Flicker multiply, and at their tops a
@@ -561,30 +759,87 @@ void StringsVoice::step(VoiceContext& ctx) {
     for (int k = 0; k < K; ++k) gain[k] = lg * flick[k];
   }
 
-  float f = hz * std::exp2(pitchC / 1200.f);
-  setRotation(f);
-  // the body and corrections follow the pitch (past 3 cents: their detail is 50) and Body
-  if (!released && (std::fabs(f / specHz - 1.f) > kRecomputeRatio || pBody != specBody)) spectrum(f);
+  // vibrato: after its delay it comes in over its attack; its rate and depth wander a little
+  float vibC = 0;
+  if (pVibDepth > 0 || vibPh != 0) {
+    const float ts = static_cast<float>(t) / sr;
+    float e = dsp::clamp((ts - pVibDelay) / pVibAttack, 0.f, 1.f);
+    e = e * e * (3 - 2 * e);
+    vibR += vibA * (vrng.bipolar() * 1.7320508f - vibR);
+    vibD += vibA * (vrng.bipolar() * 1.7320508f - vibD);
+    const int str = assigned >= 0 ? assigned : stringFor(midi);
+    const float want = std::exp2((dsp::clamp(static_cast<float>(midi) - kOpen[str], 0.f, 30.f) - kVibRefSemis) / 12.f);
+    vibScale += 0.1f * (want - vibScale);   // a string or position change: over a few ms
+    const float depth = pVibDepth * vibScale * e * std::max(0.f, 1.f + kVibVaryDepth * pVibVary * vibD * vibNormVary);
+    const float rate = pVibRate * std::max(0.25f, 1.f + kVibVaryRate * pVibVary * vibR * vibNormVary);
+    if (e > 0 || vibPh != 0) {
+      vibPh += dsp::kTwoPi * rate * kGrid / sr;
+      if (vibPh > dsp::kTwoPi) vibPh -= dsp::kTwoPi;
+      vibC = depth * std::sin(vibPh);
+    }
+  }
 
+  const float f = hz * std::exp2((pitchC + vibC + slurC) * (1.f / 1200.f));
+  // the onset recording follows the pitch too (a bend, a slur or vibrato during it)
+  step_ = stepBase * (f / hzOnset);
+  // the dynamic: the velocity's, or the Dynamics control's as it moves
+  if (!released) dyn = sustainDyn();
+  // the body and corrections follow the pitch (past 3 cents: their detail is 50), the dynamic and Body.
+  // Before the rotations are set: a pitch falling past kFMax / K adds a harmonic, which must turn
+  // at its own frequency from this step on.
+  if (!released) {
+    const bool moved = std::fabs(f / specHz - 1.f) > kRecomputeRatio;
+    const bool dynMoved = std::fabs(dyn - placeDyn) > kDynRecompute;
+    if (moved || dynMoved) place(f);
+    if (moved || dynMoved || pBody != specBody) spectrum(f);
+  }
+  setRotation(f);
+
+  // the body's fine detail, at this step's pitch; in from the hand-off with the glide, so the bank
+  // starts exactly as the recording is
+  float fineW = 0;
   if (bankOn) {
     if (released) {
       float rel = 1.f / pRelease;
       for (int k = 0; k < K; ++k) amp[k] *= fastExp(relRate[k] * rel * kGrid);
     } else if (t >= tX1) {
-      float g = 1.f - std::exp(-glideRate * kGrid);
+      // the first glide from the onset's harmonics is slow (as measured); after it, changes of the
+      // dynamic or the pitch's place are followed quickly
+      const bool first = t < tX1 + static_cast<long>(3 * kGlideS * sr);
+      float g = 1.f - std::exp(-(first ? glideRate : followRate) * kGrid);
       for (int k = 0; k < K; ++k) amp[k] += g * (target[k] - amp[k]);
     }
+    fineW = t <= tX1 ? 0.f : 1.f - std::exp(-glideRate * static_cast<float>(t - tX1));
   }
   if (!released && std::fabs(pGrain - grainAmount) > 0.01f) grainShape(pGrain);
-  // Each rotator carries its harmonic's amplitude. Aim it at this step's amp × gain by a growth
-  // per sample folded into its rotation: a smooth (exponential) ramp across the step, at no cost
-  // per sample, since a staircase would spread every harmonic into sidebands at the step's rate.
+  // Each rotator carries its harmonic's amplitude. Aim it at this step's amp × gain × fine detail by a
+  // growth per sample folded into its rotation: a smooth (exponential) ramp across the step, at no
+  // cost per sample, since a staircase would spread every harmonic into sidebands at the step's rate.
   // Re-aimed every step from where it is, so rounding never drifts.
   if (bankOn) {
+    const float l2f = std::log2(f);
+    const float fineK = fineW * pBody * kLog2_10_20;
+    const float kNyq = 0.45f * sr / f;   // a harmonic glided up past this would fold over
+    // The fine detail moves energy between the harmonics and keeps the total, at once, every step: the
+    // level's normalisation rides on amp, which follows slowly, and a slur sweeping the harmonics
+    // through the detail faster than that bumped the level by 4 dB. (A judgment: a vibrato's own swing
+    // of the whole level, about 2 dB, goes with it; each harmonic's swing stays.)
+    float fineNorm = 0;
+    if (fineK != 0) {
+      float num = 0, den = 0;
+      for (int k = 0; k < K; ++k) {
+        fineL2[k] = fineK * fineDbLog2(l2f + kLog2K.v[k]);
+        float a = amp[k] * gain[k], g = fastExp2(fineL2[k]);
+        den += a * a;
+        num += a * a * g * g;
+      }
+      fineNorm = num > 0 && den > 0 ? 0.5f * fastLog2(den / num) : 0.f;
+    }
     for (int k = 0; k < K; ++k) {
       float m2 = zr[k] * zr[k] + zi[k] * zi[k];
-      float d = std::max(amp[k] * gain[k], 1e-12f);
-      float lr = dsp::clamp(fastLog2(d * d / std::max(m2, 1e-30f)) * (0.5f / kGrid), -1.f, 1.f);
+      float d = (k + 1) > kNyq ? 1e-12f : std::max(amp[k] * gain[k], 1e-12f);
+      float fine = fineK != 0 ? fineL2[k] + fineNorm : 0.f;
+      float lr = dsp::clamp((0.5f * fastLog2(d * d / std::max(m2, 1e-30f)) + fine) * (1.f / kGrid), -1.f, 1.f);
       float rho = fastExp2(lr);
       rc[k] *= rho;
       rs[k] *= rho;
@@ -601,11 +856,18 @@ void StringsVoice::render(VoiceContext& ctx, Buffer& out) {
   pNoiseDb = ctx.get(synth.noise);
   pGrain = ctx.get(synth.grain) * 0.01f;
   pRelease = ctx.get(synth.release) * 0.01f;
-  if (pending) {
+  pDynCtl = ctx.choice(synth.dynMode) == 1;
+  pDyn = ctx.get(synth.dynamics) * 0.03f;
+  pVibDepth = ctx.get(synth.vibDepth);
+  pVibRate = ctx.get(synth.vibRate);
+  pVibDelay = ctx.get(synth.vibDelay);
+  pVibAttack = ctx.get(synth.vibAttack);
+  pVibVary = ctx.get(synth.vibVary) * 0.01f;
+  pGlide = ctx.get(synth.glide);
+  if (pending && !restart) {
     setup(ctx);
     pending = false;
   }
-  if (releasing && !released) released = true;
   const int n = out.frames;
   const float trim = dsp::dbToGain(kTrimDb);
   const float noiseLevel = dsp::dbToGain(pNoiseDb);
@@ -613,6 +875,18 @@ void StringsVoice::render(VoiceContext& ctx, Buffer& out) {
 
   int i = 0;
   while (i < n) {
+    // a string bowed again: once what it played has faded, the new note starts from here
+    if (restart && fadeLeft <= 0) {
+      restart = false;
+      vel = nextVel;
+      seedNoise = nextSeeds[0]; seedWander = nextSeeds[1]; seedVib = nextSeeds[2];
+      released = false;
+      bankOn = false;
+      t = 0;
+      setup(ctx);
+      pending = false;
+    }
+    if (releasing && !released) released = true;
     if (t % kGrid == 0) {
       // start the bank at the crossfade, its phases set so that each harmonic meets the recording's
       // at tC. A note let go before it still hands over: the string rings on after the bow leaves,
@@ -630,7 +904,8 @@ void StringsVoice::render(VoiceContext& ctx, Buffer& out) {
       }
       step(ctx);
     }
-    const int seg = std::min(n - i, kGrid - static_cast<int>(t % kGrid));
+    int seg = std::min(n - i, kGrid - static_cast<int>(t % kGrid));
+    if (restart) seg = std::max(1, std::min(seg, fadeLeft));
     const float lvl = std::exp(kLn10_20 * levelDb) * noiseLevel;
     for (int s = 0; s < seg; ++s, ++i) {
       long ti = t + s;
@@ -680,13 +955,15 @@ void StringsVoice::render(VoiceContext& ctx, Buffer& out) {
         y += noiseDrive * lvl * nz;
       }
       y *= trim;
+      if (restart) y *= static_cast<float>(fadeLeft - s) / fadeLen;
       out.add(i, y);
       energy += y * y;
     }
     t += seg;
+    if (restart) fadeLeft -= seg;
   }
 
-  if (released) {
+  if (released && !restart) {
     float sum = 0;
     for (int k = 0; k < K && bankOn; ++k) sum += amp[k] * amp[k];
     float onsetLeft = (onset && t < tX1) ? onsetRel * dsp::dbToGain(-20.f) : 0.f;

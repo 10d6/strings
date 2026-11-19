@@ -1,0 +1,19 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Romantic",
+  "tags": [
+    "vibrato",
+    "legato",
+    "portamento"
+  ],
+  "params": {
+    "vib.depth": 20,
+    "vib.rate": 5.2,
+    "vib.delay": 0.15,
+    "vib.vary": 60,
+    "voiceMode": 2,
+    "glide": 0.18
+  }
+}

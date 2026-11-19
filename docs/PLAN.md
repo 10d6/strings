@@ -60,7 +60,13 @@ decaying partials. The rest of the piano's pipeline carries over.
 2. **Engine v1** (done: `docs/MODEL.md`): a living sustain (the bow's pitch, level and each harmonic's
    own movement, measured from the recordings and calibrated to match them), noise that pulses with
    the string, the body following the pitch, harmonics to 16 kHz, parameters, page, presets.
-3. **Playability:** the controls above.
+3. **Playability:** the controls above, in four parts, each a set to judge by ear:
+   - **3a, playing** (`docs/MODEL.md`: Playing): continuous dynamics, vibrato (with the body's fine
+     detail it sweeps through, measured from the bow's wander), legato and portamento, one note per
+     string.
+   - **3b, articulations:** pizzicato, spiccato, tremolo, natural harmonics.
+   - **3c, bow colour:** pressure, position (tasto … ponticello), sordino.
+   - **3d, body and room:** sympathetic strings, wolf tone, body size, a room.
 4. **Calibration:** the piano's perceptual distance, a leave-one-note-out test, blind listening.
 5. **Violin:** the same pipeline on its data.
 6. **Experiment:** a waveguide bow-friction engine as a second model, judged on the same distance.
@@ -72,5 +78,5 @@ decaying partials. The rest of the piano's pipeline carries over.
 - The violin will trail the cello: one good library, with vibrato to take out.
 - Not measurable from these libraries, so judgments: Bow Position, sul ponticello and tasto,
   legato transitions.
-- Kit gap: the page's keyboard has no velocity or expression, which a bowed instrument needs more
-  than a piano. Plan: a bow pad on the page, and the gap filed with synthkit.
+- The page's keyboard now has velocity and a mod wheel (the kit filled that gap), which is enough to
+  play the dynamics; a bow pad on the page is still an option.
