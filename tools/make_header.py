@@ -122,6 +122,10 @@ def main():
                 so[i * len(d["dynamics"]) + j] *= g
                 rk[i * len(d["dynamics"]) + j] *= g
         d["life_shape_oct"], d["life_resid_k"] = so.tolist(), rk.tolist()
+    # which take each cell's onset plays (tools/onset_choice.py): its own, unless its bow bounced
+    oc_path = os.path.join(os.path.dirname(os.path.abspath(js)), "onset_choice.json")
+    oc = json.load(open(oc_path)) if os.path.exists(oc_path) else {}
+    onset_dyn = [[d["dynamics"].index(oc.get("%d_%s" % (m, dy), dy)) for dy in d["dynamics"]] for m in d["notes"]]
     # the noise's calibration (tools/calibrate_noise.py): added to the targets before the solve
     nadj_path = os.path.join(os.path.dirname(os.path.abspath(js)), "noise_adjust.json")
     nadj = json.load(open(nadj_path)) if os.path.exists(nadj_path) else {}
@@ -155,6 +159,9 @@ def main():
             noise[i, j] = g
             worst = max(worst, float(np.max(np.abs(resid))))
     hand_ph = np.where(hand_ph > 127, hand_ph - 256, hand_ph)
+    level_even = np.zeros_like(level)
+    for j in range(nD):
+        level_even[:, j] = np.polyval(np.polyfit(np.array(notes, float), level[:, j], 2), np.array(notes, float))
     scale = float(np.max(np.abs(onsets))) / 32767
     q = np.round(onsets / scale).astype(int)
     L = onsets.shape[1]
@@ -183,9 +190,15 @@ def main():
         arr("bandHz[kBands]", "float", bands, ff),
         "// steady harmonic level, rms dBFS, per note and dynamic",
         arr("level[kNotes][kDyns]", "float", level.flatten(), ff, 4),
+        "// the same, even along the keyboard: per dynamic a quadratic in the note through the measured",
+        "// notes' levels (they're about 3 dB rms off it as played: A3 4-7 dB over, A4 4-10 under)",
+        arr("levelEven[kNotes][kDyns]", "float", level_even.flatten(), ff, 4),
         "// the pitch at the hand-off (Hz), and the pitch the spectrum was fitted at",
         arr("handF0[kNotes][kDyns]", "float", hand_f0.flatten(), ff, 4),
         arr("fitF0[kNotes][kDyns]", "float", fit_f0.flatten(), ff, 4),
+        "// the dynamic whose take plays each cell's onset (tools/onset_choice.py: a take whose bow bounced",
+        "// is replaced by the same note's at the nearest steady dynamic)",
+        arr("onsetDyn[kNotes][kDyns]", "int", np.array(onset_dyn).flatten(), str, 4),
         "// harmonics measured per cell (up to kFMax)",
         arr("handCount[kNotes][kDyns]", "short", nk.flatten(), str, 4),
         "// each harmonic at the hand-off: peak level (centi-dB re full scale) and phase (1/128 of pi)",

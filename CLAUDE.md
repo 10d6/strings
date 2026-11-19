@@ -53,9 +53,9 @@ from CI at milestones.
   detail read every step (narrow resonances: what makes vibrato sound like one), octave-band bow noise
   pulsing at the string's period, and a release from the staccatos. Phase 3a added continuous
   dynamics (Velocity or Controller), vibrato, legato slurs and One Note Each (docs/MODEL.md: Playing).
-- **After any change to the sound** run and report: `tools/measure.py` (3.9 % median today; timbre
-  3.0; other bow 20.1; `--at-recorded-pitch` 3.4, timbre 2.7: the recordings are 3.8 cents rms off
-  equal temperament, which the fine detail hears), `tools/handoff.py` (the render's extra dip at the hand-off: median 0.2 dB),
+- **After any change to the sound** run and report: `tools/measure.py` (4.2 % median today; timbre
+  3.0; other bow 20.1; `--at-recorded-pitch` 3.5, timbre 2.7: the recordings are 3.8 cents rms off
+  equal temperament, which the fine detail hears; it plays Even Notes off, each note at its recording's level), `tools/handoff.py` (the render's extra dip at the hand-off: median 0.2 dB),
   `tools/life.py --render` (the movement's statistics against the recordings: docs/MODEL.md's table),
   `--check`, and `stress.py` (`--keys 36-84`, `--mode overlap`, the full range, extremes, and the modes:
   `voiceMode=1`, `voiceMode=2 glide=…`, `play.strings=1`, `play.dynMode=1`; Release 400 % needs
@@ -83,6 +83,10 @@ from CI at milestones.
 - **Harmonics added mid-note** (a pitch falling past kFMax / K: a slur, a vibrato on the boundary)
   must turn at their own rotation from that step: `place()` runs before `setRotation()`. A stale
   rotation from an earlier note blew one harmonic up to +30 dB (tests/chords-four-strings.json).
+- **Owner's ears on 3a**: vibrato convincing; slurs needed a dip and the vibrato starting again (Slur);
+  notes were uneven in a phrase (the recordings' levels, ±3 dB rms: Even Notes); F#4 mf's onset take
+  bounced (`tools/onset_choice.py` swaps such takes); the tone is edgy, which is the close-miked
+  recordings (the renders match their balance), so Bow Weight tilts it along the measured dynamics.
 - **Presets are settings a player might use**, not the controls' ends (those sounded weird); Body near 0
   is a sawtooth (the bare Helmholtz motion). Init has no vibrato (the recordings have none).
 - **The movement can't be judged by the distance**: a random path doesn't follow the recording's own

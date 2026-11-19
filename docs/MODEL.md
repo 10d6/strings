@@ -10,7 +10,9 @@ design rests on; `docs/PLAN.md` what comes next.
    **Dynamics From: Controller** the velocity sets only the onset, and the Dynamics control (the mod
    wheel or expression pedal) sets the sustain and moves it during the note (below: Playing).
 2. **The onset**: the first 0.4 s of the nearest measured note's down-bow recording at the nearest
-   dynamic, transposed to the note's pitch (at most 1.5 semitones) and read at the host's rate. It is
+   dynamic (or, where that take's bow bounced, the same note's at the nearest steady dynamic:
+   `tools/onset_choice.py`), transposed to the note's pitch (at most 1.5 semitones) and read at the
+   host's rate. It is
    the bow's catch, its scratch and its pitch glide as recorded (Phase 0: keeping the glide brings
    the attack from 2.9 to 1.6 % of the recording).
 3. **The hand-off**, over 0.30-0.40 s of the recording's time: a raised-cosine crossfade from the
@@ -45,6 +47,7 @@ statistics (`tools/finebody_stats.json`, below) and three calibrations (`tools/l
 git clone --depth 1 https://github.com/sfzinstruments/karoryfer-bigcat.cello ../bigcat
 python3 -I tools/analyze.py ../bigcat tools/cello.json tools/cello_onsets.npz    # ~5 min
 python3 -I tools/finebody.py ../bigcat --stats tools/finebody_stats.json         # ~2 min (after analyze)
+python3 -I tools/onset_choice.py ../bigcat tools/onset_choice.json              # which take each onset plays
 python3 -I tools/make_header.py tools/cello.json tools/cello_onsets.npz src/CelloData.h
 # build; then, only if the analysis or the engine's noise or movement changed:
 python3 -I tools/calibrate_noise.py build/strings_render tools/cello.json tools/noise_adjust.json  # ×3,
@@ -68,6 +71,8 @@ sustain:
 | `handF0` | the pitch at the hand-off (0.35 s), which the onset is transposed from |
 | `handDb`, `handPh` | each harmonic's level and phase at 0.35 s (heterodyned, `tools/harmonics.py`) |
 | `level` | the steady harmonic level (rms of the harmonic part, 0.4 s to the end) |
+| `levelEven` | the same from a smooth curve along the keyboard (Even Notes, below) |
+| `onsetDyn` | the dynamic whose take plays the cell's onset (`tools/onset_choice.py`, below) |
 | `corr` | the note's own steady spectrum against source × body, per harmonic |
 | `noiseDb` | the bow noise: each octave band filter's gain (below) |
 | `grainDepth`, `grainPhase` | the noise's pulse per band: how deep, and where in the period (below) |
@@ -78,6 +83,17 @@ Per measured note: `releaseDbS[band]`, the decay after the bow stops, from the s
 `source[dynamic][harmonic]` and `body` (dB on knots every 1/24 octave, 55 Hz-16 kHz): the source ×
 body fit (`tools/bodyfit.py`) over both bows of every sustain; and `fine`, the body's fine detail
 (below), every 2.5 cents.
+
+### Which take plays the onset (`tools/onset_choice.py`)
+
+The down-bow takes' onsets are the steadier of the two (up-bow takes dip more in most cells), but a
+few bounce: the level falls and comes back within the first 0.4 s. The owner heard it on F4-A4 at
+mf as "the bow bounced a little": F#4 mf's take falls 7 dB at 0.08 and 0.22 s (and goes on wobbling
+to 1 s, after the model has taken over). Per take, the deepest fall below the level reached so far over
+0.05-0.40 s (10 ms windows); a down-bow take falling more than 5.5 dB plays the same note's take at the
+nearest dynamic falling less than 4: A2 p (7.1 dB) plays mp's, F#4 mf (7.1) f's, F#4 mp (5.8) p's,
+C6 f (6.3) mf's, each at the cell's own level. The onset's patterns of movement and hand-off go with
+the take; the sustain is the cell's own.
 
 ### Source × body
 
@@ -155,11 +171,11 @@ A held bowed note isn't still. Over each sustain's steady part `tools/life.py` m
 | | recordings (median) | renders |
 |---|---|---|
 | pitch, trend removed | 1.58 cents rms, spread fairly evenly over 0.25-16 Hz | 1.09 (1.20 in Phase 2: another set of random paths; 20 paths of F#3 read 1.36 in both) |
-| level, below 2 Hz (per octave from 0.25 Hz) | 0.53 0.39 0.41 dB | 0.50 0.35 0.32 |
+| level, below 2 Hz (per octave from 0.25 Hz) | 0.53 0.39 0.41 dB | 0.52 0.35 0.34 |
 | level, 2-16 Hz | 0.27 0.20 0.17 dB | left out (below) |
-| each harmonic against the level | 2.38 dB (median over harmonics) | 1.55 (set by the bands: below) |
+| each harmonic against the level | 2.38 dB (median over harmonics) | 1.47 (set by the bands: below) |
 | ... by harmonic number | 1.3 dB on the fundamental, 1.7 the 2nd, 2.4 the 8th, 3.0 the 20th | 0.8, 0.9, 1.7, 1.6 |
-| ... in shared patterns: the strongest one's share, the strongest three's | 36 %, 70 % (independent harmonics: about 10 %, 30 %) | 44 %, 75 % |
+| ... in shared patterns: the strongest one's share, the strongest three's | 36 %, 70 % (independent harmonics: about 10 %, 30 %) | 43 %, 75 % |
 | a band's level, 0.25-25 Hz (0.5-2 and 2-8 kHz), recording over render per cell (four paths each) | 1 | median 0.96, 0.77-1.08 (10-90 %) |
 | the noise's pulse at the period, 250 Hz-16 kHz | 0.03 0.07 0.11 0.17 0.22 0.37 0.51 | 0.03 0.08 0.07 0.12 0.12 0.30 0.44 |
 
@@ -317,6 +333,31 @@ judgment built on what they do measure; where a number comes from elsewhere it s
   held, the next one down; if every string that can play it is held, the highest slurs to it (the left
   hand moves while the bow goes on, over Glide). A ringing string is bowed again, cutting its ring.
   The vibrato's depth follows the string the note is on (in Free, the string it would be on).
+- **A slur's articulation** (Slur, 0-100 %, default 50; the owner: "a new note often forces a pause
+  as the finger moves", and the vibrato starts again). The tone dips as the finger lifts and lands
+  (raised-cosine ramps: down 15 ms, held 50 ms × Slur, back over 35-70 ms; 12 dB × Slur deep, so 6 dB
+  at 50 %), the bow noise doesn't (the bow goes on). The vibrato's depth falls to nothing over 25 ms,
+  its cycle starts again from the note's centre once it has faded, and it comes back sooner than on a
+  new bow (a quarter of Delay, 0.4 of Attack: 75 ms and 200 ms at the defaults), so short slurred notes
+  have it too. A judgment: the recordings have no slurs. What a player does ahead of the change (the
+  anticipation) can't be known in time without looking ahead.
+- **Even Notes** (0-100 %, default 100). The recorded notes were played a few dB louder or softer
+  each: per dynamic, about 3 dB rms off a quadratic along the keyboard (A3 4-7 dB over it at every
+  dynamic, A4 4-10 under, F#3 3-5 under). Some of that may be the cello (some notes radiate more), but
+  in a phrase it was heard as uneven, and a player keeps a line even. At 100 % a note's level is the
+  curve's (`levelEven`), its onset scaled with it; each keeps its own timbre. The largest level step
+  between neighbouring semitones (mf) is then 0.9 dB, from 3.2. A judgment.
+- **Bow Weight** (−100…+100 %, default 0; the owner found the tone edgy and bright, and asked for a way
+  to soften it without cutting the top off). The renders match the recordings' spectral balance
+  (within 0.5 dB to 5 kHz; 0.7-1.4 dB brighter above, as in Phase 2): the edge is the recordings'
+  (close-miked, much of their energy at 1-2.5 kHz). In bowed strings the brightness follows the bow's
+  force, the level mostly its speed, and the recordings' dynamics measure the spectrum of each: from p
+  to f the harmonics grow against the fundamental by 3 dB at the 5th, 8 at the 12th, 13 from the 20th.
+  So Bow Weight plays the source spectrum (and corrections) of a lighter or heavier bow along that axis
+  (±100 % = ±1.5 layers, extrapolated at most half a layer past p and f) at the level the dynamic
+  plays: a gradual tilt, not a cut. At −100 % the 5-10 kHz band falls 4-8 dB, the level not at all.
+  The 1-2.5 kHz edge changes less (the layers differ little there); a room (Phase 3d) is the other
+  half of what softens a close-miked string.
 - **What a slur doesn't have**: the left finger's own sound and the bow's small change as the string
   shortens (not measurable here). The kit's legato glides at a constant time whatever the interval.
 
@@ -343,6 +384,9 @@ recorded). Ranges and sizes are judgments.
 | Delay | `vib.delay` | 0.3 s (0-2) | from the note's start |
 | Attack | `vib.attack` | 0.5 s (0.05-3) | to full depth |
 | Vary | `vib.vary` | 40 % (0-100) | how much its rate and depth wander |
+| Slur | `play.slur` | 50 % (0-100) | a slur's dip and its vibrato starting again |
+| Even Notes | `play.even` | 100 % (0-100) | the notes' levels from a smooth curve; 0 as recorded |
+| Bow Weight | `bow.weight` | 0 % (−100…+100) | a lighter (sweeter) or heavier (brighter) bow's spectrum, same level |
 | Voice Mode, Glide | kit | Poly, 40 ms | Legato slurs; Mono bows each note again |
 
 Life and Flicker multiply, so a harmonic's own movement is held to −40…+12 dB, and the level's to
@@ -350,7 +394,7 @@ Life and Flicker multiply, so a harmonic's own movement is held to −40…+12 d
 *Big Body* (140 %), *Airy Bow*, *Smooth Bow*, *Long Ring*, *Shimmer*; and from Phase 3, *Vibrato* (14
 cents, 5.6 Hz), *Singing Legato* (Legato, 60 ms, vibrato 15), *Romantic* (Legato, 180 ms portamento,
 a wider, looser vibrato), *Four Strings* (One Note Each, vibrato 12) and *Swell (Mod Wheel)*
-(Dynamics From Controller). They were first set near the controls' ends to show their range, and sounded like
+(Dynamics From Controller); *Warm* (Bow Weight −60 %, vibrato) and *Mellow Legato*. They were first set near the controls' ends to show their range, and sounded like
 it (the owner: weird); they are now settings a player might use. Two were dropped: with little body
 the bowed string alone is close to a sawtooth (the Helmholtz motion), which is what *Less Body*
 sounded like; and a sine LFO into Pitch (*Vibrato*) sounded synthy: the onset doesn't follow it and
@@ -364,24 +408,25 @@ movement (above), so the noise and movement presets are bigger to the ear than t
 
 ## How close it is (`tools/measure.py`)
 
-Every measured note and dynamic rendered as recorded (the layer's middle velocity, held, 44.1 kHz),
+Every measured note and dynamic rendered as recorded (the layer's middle velocity, held, 44.1 kHz,
+Even Notes off so each plays at its recording's level),
 against its down-bow recording over 0-3 s by the perceptual distance (`tools/perceptual.py`, the
-piano's): median **3.9 %** (attack 0, early 1.8, sustain 10.1). The attack is the recording itself,
-so 0 there is by construction.
+piano's): median **4.2 %** (attack 0, early 1.8, sustain 10.5). The attack is the recording itself,
+so 0 there is by construction (4 cells now play another take's onset: 3.9 % before).
 
 - **The timbre alone** (the recording's level movement applied to the render after the hand-off):
-  **3.0 %** (sustain 7.5). Both were 3.0 and 2.3 % with the note held still (Phase 1), 4.3 and 3.3 %
+  **3.0 %** (sustain 7.6). Both were 3.0 and 2.3 % with the note held still (Phase 1), 4.3 and 3.3 %
   with every harmonic moving independently, and 3.8 and 2.8 % before the body's fine detail.
 - **At the recordings' own pitch** (`--at-recorded-pitch`: A4 moved per note so it plays where its
-  recording does; they're 3.8 cents rms off equal temperament): **3.4 %**, timbre **2.7 %** (sustain
-  6.7), as before the fine detail (3.5 and 2.7). With the detail, a measured note played a few cents
+  recording does; they're 3.8 cents rms off equal temperament): **3.5 %**, timbre **2.7 %** (sustain
+  6.6), as before the fine detail (3.5 and 2.7). With the detail, a measured note played a few cents
   from its recording meets the body somewhere else, as a cello's would; that is what the distance
   lost, not the model.
 - **The yardstick**: the same note's up-bow recording against the down-bow, 20.1 %: another
   performance (its own envelope and onset).
-- **Even along the keyboard** (every semitone C2-C6 at mf): the largest level step between
-  neighbouring semitones is 3.2 dB (median 0.9), against 7.9 dB between measured notes a minor
-  third apart (median 2.2). Neighbouring semitones' brightness differs a little more than before the
+- **Even along the keyboard** (every semitone C2-C6 at mf, as recorded): the largest level step
+  between neighbouring semitones is 3.2 dB (median 0.9), against 7.9 dB between measured notes a
+  minor third apart (median 2.2); with Even Notes (the default) 0.9 dB (median 0.3) and 1.4 (0.4). Neighbouring semitones' brightness differs a little more than before the
   fine detail (median 0.53 octave of spectral centroid, from 0.45): each note meets the body's
   resonances its own way, as on a cello.
 - **The hand-off** (`tools/handoff.py`): the level 0.27-0.44 s dips 2.4 dB below the level around

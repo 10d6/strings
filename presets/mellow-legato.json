@@ -1,0 +1,20 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Mellow Legato",
+  "tags": [
+    "warm",
+    "legato",
+    "vibrato"
+  ],
+  "params": {
+    "bow.weight": -50,
+    "vib.depth": 15,
+    "vib.rate": 5.5,
+    "vib.delay": 0.2,
+    "voiceMode": 2,
+    "glide": 0.07,
+    "play.slur": 40
+  }
+}

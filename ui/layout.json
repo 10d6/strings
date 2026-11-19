@@ -30,6 +30,9 @@
           "size": "large"
         },
         {
+          "param": "bow.weight"
+        },
+        {
           "param": "tone.noise"
         },
         {
@@ -49,6 +52,12 @@
         },
         {
           "param": "play.strings"
+        },
+        {
+          "param": "play.slur"
+        },
+        {
+          "param": "play.even"
         },
         {
           "param": "play.release"
@@ -111,7 +120,10 @@
     "vib.rate": "How many times a second the pitch swings: cellists measure about 5.3-6.5 Hz. Slower is a wide, romantic vibrato; faster is intense.",
     "vib.delay": "How long after the bow starts the vibrato begins. Players often start a note straight and let the vibrato bloom.",
     "vib.attack": "How long the vibrato takes to reach its full depth once it starts.",
-    "vib.vary": "How much the vibrato's rate and depth wander, as a player's do. 0 is perfectly regular, which sounds mechanical; 100 % is loose and expressive."
+    "vib.vary": "How much the vibrato's rate and depth wander, as a player's do. 0 is perfectly regular, which sounds mechanical; 100 % is loose and expressive.",
+    "bow.weight": "How heavily the bow sits on the string, at the same loudness: lighter is sweeter and rounder, heavier is brighter with more edge. It plays the spectrum of the cello's own softer or louder bowing (the recordings' dynamics), so the tone tilts gradually from the 5th harmonic up rather than being cut off. 0 is as recorded.",
+    "play.slur": "How a slurred note changes (Legato, or One Note Each taking a held string): the tone dips briefly as the finger lifts and lands while the bow goes on, and the vibrato starts again from the note's centre. 0 is a seamless change; 100 % is a clearly articulated one (about 12 dB for 80 ms).",
+    "play.even": "How even the notes are in loudness. The recorded notes were played a few dB louder or softer each (A3 stands out, A4 is soft); a player keeps a line even. 100 % follows a smooth curve along the keyboard; 0 plays each note as recorded. Each note keeps its own tone either way."
   },
   "keyboard": true
 }

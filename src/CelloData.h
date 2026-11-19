@@ -44,6 +44,27 @@ constexpr float level[kNotes][kDyns] = {
   -41.3418f, -37.0411f, -32.0496f, -25.8458f,
   -34.4311f, -28.5029f, -23.5417f, -22.2396f};
 
+// the same, even along the keyboard: per dynamic a quadratic in the note through the measured
+// notes' levels (they're about 3 dB rms off it as played: A3 4-7 dB over, A4 4-10 under)
+constexpr float levelEven[kNotes][kDyns] = {
+  -28.7586f, -23.709f, -20.1054f, -17.8778f,
+  -29.0395f, -23.697f, -20.2585f, -18.157f,
+  -29.3714f, -23.7578f, -20.4535f, -18.4431f,
+  -29.7541f, -23.8915f, -20.6906f, -18.7361f,
+  -30.1878f, -24.098f, -20.9696f, -19.036f,
+  -30.6725f, -24.3774f, -21.2906f, -19.3428f,
+  -31.208f, -24.7297f, -21.6535f, -19.6566f,
+  -31.7945f, -25.1548f, -22.0584f, -19.9772f,
+  -32.4319f, -25.6528f, -22.5053f, -20.3047f,
+  -33.1203f, -26.2237f, -22.9942f, -20.6391f,
+  -33.8596f, -26.8674f, -23.525f, -20.9804f,
+  -34.6498f, -27.5839f, -24.0979f, -21.3287f,
+  -35.4909f, -28.3734f, -24.7126f, -21.6838f,
+  -36.383f, -29.2357f, -25.3694f, -22.0458f,
+  -37.326f, -30.1709f, -26.0681f, -22.4147f,
+  -38.32f, -31.1789f, -26.8088f, -22.7906f,
+  -39.3648f, -32.2598f, -27.5914f, -23.1733f};
+
 // the pitch at the hand-off (Hz), and the pitch the spectrum was fitted at
 constexpr float handF0[kNotes][kDyns] = {
   65.1249f, 65.3827f, 65.5873f, 65.5444f,
@@ -82,6 +103,27 @@ constexpr float fitF0[kNotes][kDyns] = {
   738.877f, 741.188f, 741.21f, 739.865f,
   879.425f, 880.585f, 881.069f, 881.329f,
   1039.85f, 1048.66f, 1049.26f, 1047.13f};
+
+// the dynamic whose take plays each cell's onset (tools/onset_choice.py: a take whose bow bounced
+// is replaced by the same note's at the nearest steady dynamic)
+constexpr int onsetDyn[kNotes][kDyns] = {
+  0, 1, 2, 3,
+  0, 1, 2, 3,
+  0, 1, 2, 3,
+  1, 1, 2, 3,
+  0, 1, 2, 3,
+  0, 1, 2, 3,
+  0, 1, 2, 3,
+  0, 1, 2, 3,
+  0, 1, 2, 3,
+  0, 1, 2, 3,
+  0, 0, 3, 3,
+  0, 1, 2, 3,
+  0, 1, 2, 3,
+  0, 1, 2, 3,
+  0, 1, 2, 3,
+  0, 1, 2, 3,
+  0, 1, 2, 2};
 
 // harmonics measured per cell (up to kFMax)
 constexpr short handCount[kNotes][kDyns] = {

@@ -90,7 +90,9 @@ def main():
                          "are 3.8 cents rms off equal temperament)")
     ap.add_argument("--param", action="append", default=[], help="id=value, for every render")
     a = ap.parse_args()
-    params = {k: float(v) for k, v in (p.split("=") for p in a.param)}
+    # each note against its own recording, so at its recorded level (Even Notes off), unless asked
+    params = {"play.even": 0.0}
+    params.update({k: float(v) for k, v in (p.split("=") for p in a.param)})
     fit = {}
     if a.at_recorded_pitch:
         cj = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "cello.json")))
