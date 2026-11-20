@@ -68,6 +68,9 @@
       "title": "Playing",
       "controls": [
         {
+          "param": "play.articulation"
+        },
+        {
           "param": "play.dynamics",
           "size": "large"
         },
@@ -87,7 +90,7 @@
           "param": "play.release"
         }
       ],
-      "info": "How the notes are played: where the dynamic comes from, how the strings are shared, how long they ring."
+      "info": "How the notes are played: bowed or plucked, where the dynamic comes from, how the strings are shared, how long they ring. Keyswitches below the cello's range choose the articulation: C1 Arco, F1 Pizzicato."
     },
     {
       "title": "Vibrato",
@@ -196,7 +199,101 @@
     "body.wolf": "A wolf note: on many cellos one note (often between E3 and F#3) fights the body's main resonance and can't settle, stuttering and growling. 0 is none (the recorded cello has none); higher makes it stronger and wider. It is only near the Wolf Note.",
     "body.wolfNote": "Where the wolf is. 175 Hz is about F3; most cellos' wolves are between E3 (165 Hz) and F#3 (185 Hz).",
     "bow.position": "Where the bow crosses the string. 0 is the normal place (about a tenth of the string from the bridge, as recorded). Towards the fingerboard (sul tasto, down to −100 %) the tone gets soft, round and a little airy; towards the bridge (sul ponticello, up to +100 %) it gets bright, then glassy and whistling, with a scratchier noise. The partials with a node where the bow is are weakened, as on the string.",
-    "body.mute": "A mute on the bridge. Around 50 % is a performance mute (con sordino): veiled and nasal, a little quieter. 100 % is a heavy practice mute: muffled and much quieter. 0 is no mute."
+    "body.mute": "A mute on the bridge. Around 50 % is a performance mute (con sordino): veiled and nasal, a little quieter. 100 % is a heavy practice mute: muffled and much quieter. 0 is no mute.",
+    "play.articulation": "Arco is bowed; Pizzicato is plucked: the finger's snap as recorded, then the string ringing down as measured from the cello's own pizzicato (each harmonic's two slightly detuned modes, so it beats and decays as a plucked string does). Each note plays the articulation chosen when it starts. Keyswitches: C1 Arco, F1 Pizzicato (they don't sound). A plucked note is louder and brighter the harder you play it, rings on while the key or pedal is held, and is damped when you let go (Release sets how fast). Vibrato, Body, the Instrument panel and the room apply to both; the Bow panel, Bow Noise, Grain, Bow Weight, Bow Position, Dynamics and Slur only to bowed notes."
   },
-  "keyboard": true
+  "keyboard": true,
+  "enabledWhen": {
+    "life.amount": {
+      "when": {
+        "param": "play.articulation",
+        "is": "Arco"
+      },
+      "why": "Bowed notes only: Articulation is Pizzicato."
+    },
+    "life.pitch": {
+      "when": {
+        "param": "play.articulation",
+        "is": "Arco"
+      },
+      "why": "Bowed notes only: Articulation is Pizzicato."
+    },
+    "life.flicker": {
+      "when": {
+        "param": "play.articulation",
+        "is": "Arco"
+      },
+      "why": "Bowed notes only: Articulation is Pizzicato."
+    },
+    "life.speed": {
+      "when": {
+        "param": "play.articulation",
+        "is": "Arco"
+      },
+      "why": "Bowed notes only: Articulation is Pizzicato."
+    },
+    "tone.noise": {
+      "when": {
+        "param": "play.articulation",
+        "is": "Arco"
+      },
+      "why": "Bowed notes only: Articulation is Pizzicato."
+    },
+    "tone.grain": {
+      "when": {
+        "param": "play.articulation",
+        "is": "Arco"
+      },
+      "why": "Bowed notes only: Articulation is Pizzicato."
+    },
+    "bow.weight": {
+      "when": {
+        "param": "play.articulation",
+        "is": "Arco"
+      },
+      "why": "Bowed notes only: Articulation is Pizzicato."
+    },
+    "bow.position": {
+      "when": {
+        "param": "play.articulation",
+        "is": "Arco"
+      },
+      "why": "Bowed notes only: Articulation is Pizzicato."
+    },
+    "play.dynamics": {
+      "when": {
+        "param": "play.articulation",
+        "is": "Arco"
+      },
+      "why": "Bowed notes only: Articulation is Pizzicato."
+    },
+    "play.dynMode": {
+      "when": {
+        "param": "play.articulation",
+        "is": "Arco"
+      },
+      "why": "Bowed notes only: Articulation is Pizzicato."
+    },
+    "play.slur": {
+      "when": {
+        "param": "play.articulation",
+        "is": "Arco"
+      },
+      "why": "Bowed notes only: Articulation is Pizzicato."
+    },
+    "body.wolf": {
+      "when": {
+        "param": "play.articulation",
+        "is": "Arco"
+      },
+      "why": "Bowed notes only: Articulation is Pizzicato."
+    },
+    "body.wolfNote": {
+      "when": {
+        "param": "play.articulation",
+        "is": "Arco"
+      },
+      "why": "Bowed notes only: Articulation is Pizzicato."
+    }
+  }
 }

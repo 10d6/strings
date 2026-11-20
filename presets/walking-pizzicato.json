@@ -1,0 +1,16 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Walking Pizzicato",
+  "tags": [
+    "pizzicato",
+    "resonance"
+  ],
+  "params": {
+    "play.articulation": 1,
+    "play.release": 250,
+    "string.resonance": 6,
+    "space.room": 18
+  }
+}
