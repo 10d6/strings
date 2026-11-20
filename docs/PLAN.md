@@ -65,7 +65,7 @@ decaying partials. The rest of the piano's pipeline carries over.
      detail it sweeps through, measured from the bow's wander), legato and portamento, one note per
      string.
    - **3b, articulations:** pizzicato, spiccato, tremolo, natural harmonics.
-   - **3c, bow colour:** pressure, position (tasto … ponticello), sordino.
+   - **3c, bow colour** (done): pressure (Bow Weight, in 3a), position (tasto … ponticello), the mute.
    - **3d, body and room** (done): a room (synthkit's reverb, from the piano), sympathetic strings,
      body size, a wolf tone.
 4. **Calibration:** the piano's perceptual distance, a leave-one-note-out test, blind listening.

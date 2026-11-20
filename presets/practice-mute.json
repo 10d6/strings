@@ -1,0 +1,13 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Practice Mute",
+  "tags": [
+    "mute"
+  ],
+  "params": {
+    "body.mute": 100,
+    "space.room": 10
+  }
+}

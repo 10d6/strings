@@ -433,6 +433,36 @@ after its release G3's ring is 13 dB under its own tail. The distance doesn't mo
   nearer), its rate wandering as the vibrato's does: at 100 % on F3 the level swings 14 dB; five
   semitones away, nothing. A judgment. Preset *Old Cello With a Wolf* (60 %).
 
+## Bow colour: position and the mute (Phase 3c)
+
+Neither is in the recordings (no sul tasto, ponticello or mute), so both are judgments, built on
+bowed-string and mute acoustics and, where they can be, on the recordings' own dynamics. Bow
+pressure is Bow Weight (Phase 3a).
+
+- **Bow Position** (−100 % sul tasto … 0 … +100 % sul ponticello). The bowing point β, as a share of
+  the string from the bridge, goes from 1/4 through 1/10 (normal) to 1/40; players use about 1/8 to
+  1/32 on the violin. Moving towards the bridge, players slow the bow and press harder, which is most
+  of the brilliance there (Guettler), and bow force brightens the tone as bow speed darkens it. So:
+  - the **source** moves along the recordings' own dynamics, a layer per 100 % (brighter towards the
+    bridge, darker towards the fingerboard). The source alone: the measured notes' corrections carry
+    each take's quirks (moving them too, sul tasto took 12.5 dB off C3's fundamental: its mp take's);
+  - the partials with a **node at the bowing point** are weakened, to 0.3 at the node (the bow hair's
+    width fills the rest), the more the further from normal;
+  - past what the dynamics reach, a **tilt**: near the bridge the fundamental 6 dB weaker and the
+    partials above the 4th +6 dB per octave (glassy, whistling); over the fingerboard −5 dB per octave
+    above the 3rd (soft);
+  - the **bow noise** grows at both ends (+8 dB at the bridge with a harder pulse, scratchy; +6 dB over
+    the fingerboard with less of it, airy: flautando).
+  On C3 at mf: spectral centroid 443 Hz normal, 318 at −100 %, 902 at +50 %, 2067 at +100 %; the
+  level stays. Presets *Sul Tasto* (−70 %) and *Sul Ponticello* (+70 %).
+- **Mute** (0-100 %). Measured on violins (Acta Acustica 2025): every mute dips the bridge's
+  resonance region ("bridge hill"), a heavy practice mute deeper and wider, and heavy mutes take the
+  lows and much of the loudness too. Here: a dip around 1.8 kHz (0.8 octave wide, up to 12 dB), a
+  gentler cut above 600 Hz (up to 6 dB), and past 50 % up to 6 dB off everything; on the bow noise too.
+  It isn't normalised back to the level. 50 % is about a performance mute (C3: −0.3 dB, 1-6 kHz about
+  −7 dB), 100 % a heavy practice mute (−6 dB, 1-6 kHz −19 dB). Presets *Con Sordino* (50 %) and
+  *Practice Mute*.
+
 ## Controls
 
 All are modulation destinations; none is measured except at its default (which is the cello as
@@ -462,6 +492,8 @@ recorded). Ranges and sizes are judgments.
 | Voice Mode, Glide | kit | Poly, 40 ms | Legato slurs; Mono bows each note again |
 | Reverb, Space, Decay, Size, Pre-delay, Damping, Early, Low Cut, High Cut | `space.*` | 25 %, Hall | the room (above); the piano's controls |
 | Resonance | `string.resonance` | 0 dB (−40…+24) | the open strings ringing along (above) |
+| Bow Position | `bow.position` | 0 % (−100…+100) | sul tasto … normal … sul ponticello (above) |
+| Mute | `body.mute` | 0 % (0-100) | 50 % a performance mute, 100 % a practice mute (above) |
 | Body Size | `body.size` | 100 % (50-200) | the body's resonances moved as a larger or smaller body's |
 | Wolf, Wolf Note | `body.wolf`, `body.wolfNote` | 0 %, 175 Hz | a wolf note: the tone stuttering near it |
 
@@ -472,7 +504,8 @@ cents, 5.6 Hz), *Singing Legato* (Legato, 60 ms, vibrato 15), *Romantic* (Legato
 a wider, looser vibrato), *Four Strings* (One Note Each, vibrato 12) and *Swell (Mod Wheel)*
 (Dynamics From Controller); *Warm* (Bow Weight −60 %, vibrato) and *Mellow Legato*; from 3d, *Dry
 (Close Mic)* (no room), *Distant Hall* (Reverb 55 %, a lighter bow), *Ringing Strings*, *Small Body*,
-*Big Cello* and *Old Cello With a Wolf*. They were first set near the controls' ends to show their range, and sounded like
+*Big Cello* and *Old Cello With a Wolf*; from 3c, *Sul Tasto*, *Sul Ponticello*, *Con Sordino* and
+*Practice Mute*. They were first set near the controls' ends to show their range, and sounded like
 it (the owner: weird); they are now settings a player might use. Two were dropped: with little body
 the bowed string alone is close to a sawtooth (the Helmholtz motion), which is what *Less Body*
 sounded like; and a sine LFO into Pitch (*Vibrato*) sounded synthy: the onset doesn't follow it and
@@ -530,8 +563,8 @@ time with `-DCMAKE_BUILD_TYPE=Release`.
 
 ## What isn't modelled (yet)
 
-- The bow's pressure and position, sordino (Phase 3c); pizzicato, spiccato, tremolo, harmonics
-  (3b).
+- Pizzicato, spiccato, tremolo, harmonics (3b).
+- Bow position and the mute measured on this cello (they're judgments: above).
 - The late ring of the strings coupled to a note's own (sympathetic strings, above: the bank is driven
   by the sound only).
 - The cello's own fine resonances (the engine's fine detail has their statistics, not their shape),

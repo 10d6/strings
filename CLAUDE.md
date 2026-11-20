@@ -55,7 +55,8 @@ from CI at milestones.
   dynamics (Velocity or Controller), vibrato, legato slurs and One Note Each (docs/MODEL.md: Playing);
   3d a room (synthkit's `dsp::Reverb`, the piano's, API.md §8b), Hall at 25 % by default, sympathetic
   open strings (a bank driven by the dry sound; the voices report their string, `stopMask`), Body Size
-  and a wolf (off by default).
+  and a wolf (off by default); 3c Bow Position and the Mute (judgments: the source moves along the
+  measured dynamics, not the corrections).
 - **After any change to the sound** run and report: `tools/measure.py` (4.2 % median today; timbre
   3.0; other bow 20.1; `--at-recorded-pitch` 3.5, timbre 2.7: the recordings are 3.8 cents rms off
   equal temperament, which the fine detail hears; it plays Even Notes off, each note at its recording's level), `tools/handoff.py` (the render's extra dip at the hand-off: median 0.2 dB),

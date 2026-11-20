@@ -1,0 +1,13 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Sul Ponticello",
+  "tags": [
+    "bow",
+    "glassy"
+  ],
+  "params": {
+    "bow.position": 70
+  }
+}

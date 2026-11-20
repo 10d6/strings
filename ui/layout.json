@@ -33,6 +33,9 @@
           "param": "bow.weight"
         },
         {
+          "param": "bow.position"
+        },
+        {
           "param": "tone.noise"
         },
         {
@@ -42,10 +45,13 @@
     },
     {
       "title": "Instrument",
-      "info": "The cello around the string: its open strings ringing along, its size, and (if you want one) a wolf note.",
+      "info": "The cello around the string: its open strings ringing along, a mute on its bridge, its size, and (if you want one) a wolf note.",
       "controls": [
         {
           "param": "string.resonance"
+        },
+        {
+          "param": "body.mute"
         },
         {
           "param": "body.size"
@@ -188,7 +194,9 @@
     "string.resonance": "The open strings ringing along: a string a note isn't played on picks up the harmonics it shares with that note, and rings on after it. Strongest where a note is in unison with an open string's partial (G3 sets the open G ringing). 0 dB is a faint halo (the recordings already hold the cello's own, while a note is held); +12 dB is a clear halo; +24 dB a shimmering wash; −40 dB off.",
     "body.size": "The body's size against the cello's: its resonances move with it, the string stays. Smaller (down to 50 %) moves them up, towards a viola's or violin's body: the low notes lose their depth. Larger (up to 200 %) moves them down, towards a bass's. 100 % is the cello recorded.",
     "body.wolf": "A wolf note: on many cellos one note (often between E3 and F#3) fights the body's main resonance and can't settle, stuttering and growling. 0 is none (the recorded cello has none); higher makes it stronger and wider. It is only near the Wolf Note.",
-    "body.wolfNote": "Where the wolf is. 175 Hz is about F3; most cellos' wolves are between E3 (165 Hz) and F#3 (185 Hz)."
+    "body.wolfNote": "Where the wolf is. 175 Hz is about F3; most cellos' wolves are between E3 (165 Hz) and F#3 (185 Hz).",
+    "bow.position": "Where the bow crosses the string. 0 is the normal place (about a tenth of the string from the bridge, as recorded). Towards the fingerboard (sul tasto, down to −100 %) the tone gets soft, round and a little airy; towards the bridge (sul ponticello, up to +100 %) it gets bright, then glassy and whistling, with a scratchier noise. The partials with a node where the bow is are weakened, as on the string.",
+    "body.mute": "A mute on the bridge. Around 50 % is a performance mute (con sordino): veiled and nasal, a little quieter. 100 % is a heavy practice mute: muffled and much quieter. 0 is no mute."
   },
   "keyboard": true
 }
