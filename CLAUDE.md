@@ -34,6 +34,10 @@ from CI at milestones.
   way `10d6/piano` is: the sustain is modelled, only the onset is recorded audio. `docs/PLAN.md` is
   the plan and its phases; `docs/SOURCES.md` the recordings and their licenses (keep attribution for
   any recorded audio that ships).
+- **Picking up the work**: `docs/PLAN.md` has where it stands, what the owner has decided, what's left
+  (3b articulations next, then calibration and a `v0.1` release, the violin, a waveguide experiment),
+  and the steps for starting a new session (the recordings to clone, the check that the workspace
+  reproduces today's numbers).
 - The piano repo is the reference for technique: its `docs/MODEL.md` and `docs/TESTING.md`, the
   perceptual distance (`tools/measure/perceptual.py`), the recorded strike, the free-string bank,
   Touch Point, the reverb. Port what fits rather than reinventing it, and say where it came from.
