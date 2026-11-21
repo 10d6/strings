@@ -1251,7 +1251,7 @@ float StringsVoice::tremSample(long ti) {
       const float c1 = 0.5f * (x1 - xm), c2 = xm - 2.5f * x0 + 2 * x1 - 0.5f * x2, c3 = 0.5f * (x2 - xm) + 1.5f * (x0 - x1);
       y += w * g.g * (((c3 * fr + c2) * fr + c1) * fr + x0);
     }
-    g.pos += fNow * g.stepK;
+    g.pos += static_cast<double>(fNow) * g.stepK;
   }
   return y;
 }
