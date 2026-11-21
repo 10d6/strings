@@ -70,6 +70,22 @@ from CI at milestones.
   `--tail 20`), and browser speed (`bench-web.cjs tests/four-strings.json`: 2.6× today with the room, 4.9× dry). After changing the analysis or
   the engine's noise or movement, recalibrate (`calibrate_noise.py`, `calibrate_life.py`, then `calibrate_flicker.py`:
   docs/MODEL.md).
+- **Articulations and pizzicato** (3b, docs/MODEL.md: Pizzicato): `play.articulation` (Arco, Pizzicato;
+  new ones are appended so patches keep their indices) and keyswitches (C1 Arco, F1 Pizzicato; D1 E1 G1
+  A1 kept for Staccato, Spiccato, Tremolo, Harmonics), swallowed in `processEvents`, which records each
+  key's articulation and round robin (`noteArt`, `noteRR`) for `start` to read (no parameters there).
+  The voice runs `arcoRun` or `pizzRun`; a string played again with the other articulation switches
+  at the restart. Pizzicato is its own data (`tools/pizz.py` → `src/PizzData.h` via
+  `tools/make_pizz_header.py`; never edit by hand): the pluck as recorded (0.22 s, hand-off 0.15-0.21 s),
+  then each harmonic's 1-2 measured modes. After a change to it run `tools/measure_pizz.py` (8.0 %
+  median today, another take 16.8; hand-off 1.0 dB) as well as the arco checks (which must not move).
+  Lessons: weight a mode fit by the *note's* level, not the harmonic's own (its noisy tail took over);
+  bound every mode by its recording (each take rings into the noise: modes fitted to noise never
+  decayed, and D#3 rang on 15-30 dB over its recording above 1 kHz); move each harmonic to its own peak
+  (a free string's partials sit off the series; a stiff-string line fitted worse); the early "pitch
+  glide" is modes beating (the same in every round robin), not tension; hand over late enough that the
+  pluck's own ring is in the recording (at 0.06-0.10 s the modes were 2-7 dB short). Velocity is v²,
+  the library's own mapping (25 dB from 127 to 30: wider than the bow's p-f, for the owner's ears).
 - **The harmonics move in patterns** (docs/MODEL.md): each recording's strongest three principal
   components hold 70 % of its harmonics' movement. Moving each harmonic independently, at the right
   size and spectrum, sounded weird to the owner (Still Bow, no movement, sounded good): check the

@@ -20,7 +20,8 @@ grows past what loads comfortably, split them into two builds of the same source
 
 ## Where it stands (2026-11-20)
 
-The cello is playable and was judged by ear at every step (Phases 0-3, PRs #1-#8, all merged).
+The cello is playable and was judged by ear at every step (Phases 0-3, PRs #1-#8, all merged). 3b has
+begun: the Articulation choice, keyswitches and pizzicato (PR #10, for the owner's ears).
 `docs/MODEL.md` is the reference for how everything works and why; `CLAUDE.md` has the rules, the
 lessons and the checks to run.
 
@@ -30,6 +31,9 @@ lessons and the checks to run.
 - **Playing** (3a): Dynamics From Velocity or Controller (CC 1 and 11); vibrato; Legato and Mono with
   Glide; Slur (a dip and the vibrato starting again); One Note Each (four strings); Even Notes; Bow
   Weight.
+- **Pizzicato** (3b, first part): the pluck as recorded, then each harmonic's measured modes ringing
+  down (`tools/pizz.py`); Articulation (Arco, Pizzicato) and keyswitches C1, F1. 8.0 % from its
+  recordings (another take of the same note: 16.8 %).
 - **Bow colour** (3c): Bow Position (sul tasto … sul ponticello), the Mute.
 - **Body and room** (3d): a room (synthkit's `dsp::Reverb`, the piano's); sympathetic open strings;
   Body Size; a wolf.
@@ -45,18 +49,25 @@ answer. The owner tests each PR on its Pages preview and installs plugin zips at
 
 ## What's left
 
-### 3b: articulations (next)
+### 3b: articulations (in progress)
 
 bigcat has more for this than the first plan assumed (`docs/PHASE0.md`): **pizzicato** (13 notes × 4
 round robins, 0.75-7 s, decaying 12-45 dB/s), **staccato** (the 17 notes × 4 dynamics × 4 round
 robins, 0.5-2 s, ending in the free decay), a **harmonic slide** per string, and 17 **knocks**. So
 most of 3b can be measured.
 
-- **Choosing an articulation**: an Articulation choice (Arco, Staccato, Spiccato, Pizzicato,
+- **Done (PR #10)**: the Articulation choice (Arco, Pizzicato so far; the others are appended as they
+  come, so patches keep their indices), keyswitches C1 Arco and F1 Pizzicato, and pizzicato
+  (docs/MODEL.md: Pizzicato). The owner chose: pizzicato first in its own PR, the rest in a second;
+  keyswitches from C1 on white keys (D1 Staccato, E1 Spiccato, G1 Tremolo, A1 Harmonics are kept for
+  them). Not a modulation destination: voices read it as they start, through `processEvents`. Left
+  from the pizzicato: above C5 (C5's pluck transposed), a pluck position, the recordings' louder open
+  strings.
+- **Choosing an articulation** (as first planned): an Articulation choice (Arco, Staccato, Spiccato, Pizzicato,
   Tremolo, Harmonics), modulatable, and **keyswitches** (low keys below the cello's range, swallowed
   in `processEvents`, which moves the choice with `ctx.setParam`: API.md §4a; check the page's
   keyboard shows them). A voice reads it at its start; changing it during a note affects the next.
-- **Pizzicato** (measured): decaying modes, as the piano's partials. A tool like `analyze.py` for the
+- **Pizzicato** (measured; done, as planned here except as docs/MODEL.md says): decaying modes, as the piano's partials. A tool like `analyze.py` for the
   pizzicato files: per note, each harmonic's initial level and decay rate, fitted as a pluck source ×
   the same body (the body fit is shared), plus a recorded pluck onset (about 50-100 ms, the finger's
   snap, as the arco onset is kept) handing over to decaying harmonics in phase (the same `handDb` /
@@ -191,8 +202,8 @@ decaying partials. The rest of the piano's pipeline carries over.
    - **3a, playing** (done; `docs/MODEL.md`: Playing): continuous dynamics, vibrato (with the body's
      fine detail it sweeps through, measured from the bow's wander), legato and portamento, one note
      per string, Slur, Even Notes, Bow Weight.
-   - **3b, articulations** (next: What's left, above): pizzicato, staccato, spiccato, tremolo,
-     natural harmonics.
+   - **3b, articulations** (in progress: What's left, above): pizzicato (done), staccato, spiccato,
+     tremolo, natural harmonics.
    - **3c, bow colour** (done): pressure (Bow Weight, in 3a), position (tasto … ponticello), the mute.
    - **3d, body and room** (done): a room (synthkit's reverb, from the piano), sympathetic strings,
      body size, a wolf tone.

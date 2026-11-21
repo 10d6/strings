@@ -20,17 +20,19 @@ plays:
 - **A room** around it (Hall by default; Room, Chamber, Cathedral, Plate), the same reverb as Piano's.
 - **The instrument:** open strings ringing along, the body's size, and a wolf note if you want one.
 - **Bow colour:** bow position (sul tasto to sul ponticello) and a mute.
+- **Pizzicato:** the pluck as recorded, then the string ringing down as measured (each harmonic's
+  beating modes). Choose it with Articulation or the keyswitches C1 (Arco) and F1 (Pizzicato).
 
 The Bow and Tone panels change how much it moves, how much of the body is in the tone, and the bow
-noise; the presets show the range. Articulations (pizzicato, spiccato, tremolo, harmonics) are
-still to come.
+noise; the presets show the range. Staccato, spiccato, tremolo and harmonics are still to
+come.
 
 ## The recordings
 
 The model data (`src/CelloData.h`) is measured from the **Karoryfer x bigcat cello** by Karoryfer
 Samples and bigcat instruments, played by Kamila Borowiak
 ([CC0](https://github.com/sfzinstruments/karoryfer-bigcat.cello)). It also holds each measured
-note's first 0.4 s as recorded. To measure again:
+note's first 0.4 s as recorded, and its pizzicato (`src/PizzData.h`) each pluck's first 0.22 s. To measure again:
 
 ```
 git clone --depth 1 https://github.com/sfzinstruments/karoryfer-bigcat.cello ../bigcat   # 267 MB
@@ -41,6 +43,10 @@ python3 -I tools/make_header.py tools/cello.json tools/cello_onsets.npz src/Cell
 python3 -I tools/measure.py ../bigcat build/strings_render      # every note and dynamic (~2.5 min)
 python3 -I tools/handoff.py ../bigcat build/strings_render      # the onset's hand-off to the model
 python3 -I tools/life.py ../bigcat --render build/strings_render # how notes move, against the recordings
+# the pizzicato (src/PizzData.h):
+python3 -I tools/pizz.py ../bigcat tools/pizz.json tools/pizz_onsets.npz                        # ~10 min
+python3 -I tools/make_pizz_header.py tools/pizz.json tools/pizz_onsets.npz src/PizzData.h
+python3 -I tools/measure_pizz.py ../bigcat build/strings_render  # every plucked take against its recording
 ```
 
 The noise and the movement are calibrated against the recordings (`tools/calibrate_noise.py`,
@@ -74,7 +80,7 @@ The browser page and the plugins are built the same way as in synthkit: see
 | | |
 |---|---|
 | `synth.json` | identity (name, IDs, plugin codes) and kit features |
-| `src/` | the sound engine (`Synth.cpp`) and the measured data (`CelloData.h`, generated) |
+| `src/` | the sound engine (`Synth.cpp`) and the measured data (`CelloData.h`, `PizzData.h`, generated) |
 | `docs/` | the plan, how it's modelled, the recordings, Phase 0's experiments |
 | `tools/` | measuring the recordings, generating the header, comparing renders with the recordings |
 | `presets/` | factory presets (`init.json` is what a new instance starts on) |

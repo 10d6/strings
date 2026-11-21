@@ -1,0 +1,12 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Pizzicato",
+  "tags": [
+    "pizzicato"
+  ],
+  "params": {
+    "play.articulation": 1
+  }
+}

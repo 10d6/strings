@@ -1,0 +1,17 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Singing Pizzicato",
+  "tags": [
+    "pizzicato",
+    "vibrato"
+  ],
+  "params": {
+    "play.articulation": 1,
+    "play.release": 300,
+    "vib.depth": 12,
+    "vib.delay": 0.15,
+    "vib.attack": 0.3
+  }
+}
