@@ -61,7 +61,10 @@ from CI at milestones.
   open strings (a bank driven by the dry sound; the voices report their string, `stopMask`), Body Size
   and a wolf (off by default); 3c Bow Position and the Mute (judgments: the source moves along the
   measured dynamics, not the corrections).
-- **After any change to the sound** run and report: `tools/measure.py` (4.2 % median today; timbre
+- **After any change to the sound** run `tools/regress.py ../bigcat build-rel/strings_render` (every
+  measure below at once against `tools/baseline.json`, about 5 minutes on two cores; a change that
+  moves a number on purpose runs `--update` and commits the baseline with it, so the diff shows what
+  moved), then the checks it doesn't cover. The measures it runs: `tools/measure.py` (4.2 % median today; timbre
   3.0; other bow 20.1; `--at-recorded-pitch` 3.5, timbre 2.7: the recordings are 3.8 cents rms off
   equal temperament, which the fine detail hears; it plays Even Notes off, each note at its recording's level), `tools/handoff.py` (the render's extra dip at the hand-off: median 0.2 dB),
   `tools/life.py --render` (the movement's statistics against the recordings: docs/MODEL.md's table),
