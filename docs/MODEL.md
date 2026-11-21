@@ -559,16 +559,18 @@ end 0.5-1.1 s in, some mid-ring. A staccato is a bowed note played from its own 
 python3 -I tools/staccato.py ../bigcat tools/stacc.json tools/stacc_onsets.npz    # ~1 min
 python3 -I tools/make_stacc_header.py tools/stacc.json tools/stacc_onsets.npz src/StaccData.h
 python3 -I tools/measure_stacc.py ../bigcat build/strings_render                  # ~1 min
+python3 -I tools/measure_trem.py build/strings_render                             # the tremolo's rhythm, dips, level
 ```
 
 - **Its take**: the nearest measured note's, at the velocity's nearest dynamic, two round robins per
-  note and dynamic (the two closest to the four's median envelope; the others are the yardstick).
-  Repeated staccatos are what the articulation is for, and one take would repeat exactly.
+  note and dynamic: the take closest to the four's median envelope bowed each way (the others are the
+  yardstick; which way a take was bowed: Tremolo, below). Repeated staccatos are what the articulation
+  is for, and one take would repeat exactly; now they alternate bows, as a player's do.
 - **Recorded until 0.25 s at most**: the take hands over at its bow-off or 0.25 s, whichever is first,
   crossfading over 50 ms into the bank started in phase with it (the arco notes' machinery: each
   harmonic's level and phase at the crossfade's middle, measured on the take). Recording every stroke
   to its bow-off would take 2.7 MB a round robin; as it is, the onsets are 3.7 MB of samples (the page
-  grew from 7.1 to 12.4 MB).
+  grew from 7.1 to 12.4 MB; the tremolo's grains took it to 15.5).
 - **The bow leaves when the take's did**, whatever the key does: a key let go earlier changes nothing,
   a key held on changes nothing. A stroke longer than its recording fades as its take did from the
   hand-off to the bow-off (dB/s, measured): gliding to a held note's level instead, the bow left 200-345
@@ -582,9 +584,9 @@ python3 -I tools/measure_stacc.py ../bigcat build/strings_render                
   velocity, between notes and dynamics as the arco levels are, with its own Even Notes curve.
 
 **How close it is** (`tools/measure_stacc.py`: each kept take on its key at its dynamic's velocity, Even
-Notes off, dry, against its recording for as long as the file runs, at most 1 s): **23.5 %** by the
-perceptual distance (attack 0.1, early 9.6, late 57.0), against **26.1 %** for the same note and
-dynamic's other takes. Bow-off within 2 ms of the recording (median), the peak within 0.6 dB. The late
+Notes off, dry, against its recording for as long as the file runs, at most 1 s): **23.4 %** by the
+perceptual distance (attack 0.2, early 9.7, late 56.7), against **26.5 %** for the same note and
+dynamic's other takes (23.5 and 26.1 with the two closest takes kept, before they were one each way). Bow-off within 2 ms of the recording (median), the peak within 0.6 dB. The late
 window (0.5-1 s, the ring after the bow) is the largest part: the recordings hold the body's and the
 open strings' ring under high notes (−16 dB under 250 Hz 0.15-0.45 s after the bow), which the bank
 doesn't give (as for the arco release: a known gap).
@@ -598,19 +600,39 @@ dips between the bounces at 7 notes a second.
 
 ## Tremolo (Phase 3b)
 
-A judgment (no tremolo in these recordings): a held bowed note whose bow changes direction Tremolo Rate
-times a second (4-24, default 12), each stroke 10 % longer or shorter at random. Down- and up-bows are
-two slightly different sounds: the down-bow 0.15 of a dynamic layer heavier, the up-bow as much lighter
-(level and timbre: the harmonics follow in 30 ms, as they follow any dynamic), each stroke's level
-varying by 0.5 dB rms. The change itself is brief and light: a raised cosine 10 ms wide around each turn,
-dipping 4 dB, with 4 dB more bow noise at its middle. It runs from the note's start, the recorded onset
-included (the first stroke starts mid-way: no change at the attack). Notes started in the same block
-share their strokes (the tremolo's random draws are seeded by the block), so a double stop is one bow:
-on separate clocks a fifth's changes blurred. Arco's slurs, vibrato, Dynamics and the rest apply.
+The bow's strokes as recorded (docs/TREMOLO.md has the ten rounds of listening that led here, and what
+was measured on the way). A tremolo note is a run of strokes, each one of bigcat's staccato takes:
 
-The owner's ears on the first version (a 10 dB dip over a fifth of every stroke, a 9 dB noise burst):
-"cool but not really like it's being bowed"; a real tremolo is smoother, mostly two slightly distinct
-sounds from the two bow directions, the change itself very brief and not strong.
+- **Bowed the way the stroke goes.** bigcat's staccato round robins alternate bows; which way each take
+  went is read from it (`tools/staccato.py`): a bow change turns the string's motion over, which flips
+  the 2nd harmonic's phase against the fundamental's, so a note's takes fall into two groups. The
+  strokes alternate between them. All four round robins of a note and dynamic play: the two the
+  staccato keeps (now one bowed each way) from their onsets, the other two as 0.2 s grains of their own
+  (2.4 MB of samples: the page grew from 12.4 to 15.5 MB). Where a note and dynamic has only one way
+  (A5 f), a take is turned over to stand in.
+- **From where its stroke starts** (2 ms before it stands 30 dB under its peak), the nearest measured
+  note's, transposed to the note and following its pitch (bends, slurs, vibrato), at a dynamic drawn
+  within one layer of the note's, not the take this bow played last.
+- **At a held note's level** for the dynamic (with Even Notes), from the take's early level (10-70 ms
+  in: a tremolo's stroke never gets further; a staccato's peak is ~11 dB over it), each take keeping
+  ±1.5 dB of its own, each stroke ±1.8 dB rms more, and 2.6 dB down overall (its rms read that much over
+  a held note's: the takes' noise and their peakier strokes). `tools/measure_trem.py`: +0.1 dB median.
+- **Lined up at each change**: the new stroke's fundamental starts half a cycle from where the old
+  one's is (the motion turned over), crossfading linearly over 6-12 ms (drawn per change).
+- **In a solo cellist's rhythm** (measured from the Philharmonia Orchestra's cello tremolos, which can't
+  ship: docs/TREMOLO.md): strokes around Tremolo Rate (6-20 a second, default 12), the changes jittered
+  around a beat (6.6 % rms each, so a long stroke is followed by a short), each stroke 7.6 % more, the
+  beat drifting 3 % per stroke (one-pole 0.8), one bow 4 % longer. A stroke never runs past its take
+  (with its change). `tools/measure_trem.py`: 11.6 strokes a second at 12, lengths 12.9 % sd, lag-1
+  −0.26, dips 8.2 dB at the changes (the player: 12-13.5, 12-18 %, −0.15 to −0.36, 6-10 dB).
+- **Letting go** ends the stroke under way; the model's release rings on from its level (the held
+  note's steady spectrum, decaying at the measured release), crossfading in over 10 ms at that change.
+
+Notes started in the same block share their rhythm (its random draws are seeded by the block), so a
+double stop is one bow; which take each plays is the note's own. The model itself (its movement, body
+detail, bow noise, Bow Weight, Bow Position, the Mute, Body) doesn't play during the strokes, which are
+recordings: only Dynamics, Even Notes, pitch, Slur's dip, the room and the sympathetic strings reach
+them. Cheaper than a held note: a four-string tremolo runs 3.9× realtime in the browser (a held one 3.0×).
 
 ## Harmonics (Phase 3b)
 
@@ -673,7 +695,7 @@ recorded). Ranges and sizes are judgments.
 | Body Size | `body.size` | 100 % (50-200) | the body's resonances moved as a larger or smaller body's |
 | Wolf, Wolf Note | `body.wolf`, `body.wolfNote` | 0 %, 175 Hz | a wolf note: the tone stuttering near it |
 | Articulation | `play.articulation` | Arco | Arco, Pizzicato, Staccato, Spiccato, Tremolo, Harmonics, for the notes that follow; keyswitches C1 D1 E1 F1 G1 A1 (above). Not a modulation destination: a voice reads it as it starts |
-| Tremolo Rate | `play.tremRate` | 12 Hz (4-24) | Tremolo's bow changes a second |
+| Tremolo Rate | `play.tremRate` | 12 Hz (6-20) | Tremolo's bow changes a second, around which a player's rhythm varies |
 
 Life and Flicker multiply, so a harmonic's own movement is held to −40…+12 dB, and the level's to
 ±12 dB. Init has no vibrato (it plays the cello as recorded). Presets: *Still Bow*, *Restless Bow*,
@@ -745,7 +767,9 @@ time with `-DCMAKE_BUILD_TYPE=Release`.
 
 ## What isn't modelled (yet)
 
-- Spiccato and tremolo are judgments (no recordings of either); the harmonics' onset is a swell (the
+- Spiccato is a judgment (no recordings of it); the tremolo's strokes are recorded staccatos and its
+  rhythm measured from another player, but neither is checked against a recorded tremolo of this cello;
+  tremolo slower than 6 strokes a second isn't possible (0.2 s grains); the harmonics' onset is a swell (the
   slides have none); the seagull effect between harmonic nodes (in the D and A slides) isn't played;
   col legno (the 17 knocks) isn't used.
 - Pizzicato above C5 transposes C5's pluck (C6 plays it an octave up, twice as fast); a pluck position

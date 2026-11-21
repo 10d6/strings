@@ -22,7 +22,8 @@ plays:
 - **Bow colour:** bow position (sul tasto to sul ponticello) and a mute.
 - **Articulations:** arco; pizzicato (the pluck as recorded, then each harmonic's beating modes);
   staccato (each note's own recorded strokes, the bow leaving as it did); spiccato (bounced); tremolo
-  (Tremolo Rate, one bow across a double stop); natural and artificial harmonics (measured from the
+  (the recorded strokes, each bowed the way it goes, in a player's rhythm around Tremolo Rate; one bow
+  across a double stop); natural and artificial harmonics (measured from the
   harmonic slides). Choose them with Articulation or the keyswitches C1 Arco, D1 Staccato, E1 Spiccato,
   F1 Pizzicato, G1 Tremolo, A1 Harmonics.
 

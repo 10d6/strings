@@ -64,9 +64,11 @@ most of 3b can be measured.
   them). Not a modulation destination: voices read it as they start, through `processEvents`. Left
   from the pizzicato: above C5 (C5's pluck transposed), a pluck position, the recordings' louder open
   strings.
-- **Done (PR #12)**: staccato (measured: each take's own stroke, bow-off and release; 23.5 % from its
-  recordings, another take 26.1), spiccato (a judgment from the staccatos), tremolo (a judgment;
-  notes started together share one bow), natural and artificial harmonics (measured from the slides),
+- **Done (PR #12)**: staccato (measured: each take's own stroke, bow-off and release, the two kept
+  takes bowed one each way; 23.4 % from its recordings, another take 26.5), spiccato (a judgment from
+  the staccatos), tremolo (bigcat's staccato strokes as recorded, each bowed the way its stroke goes,
+  in a solo player's measured rhythm; notes started together share one bow; ten rounds of listening:
+  docs/TREMOLO.md), natural and artificial harmonics (measured from the slides),
   keyswitches D1, E1, G1, A1, Tremolo Rate; and a fix for a plucked note far from its pitch, which blew
   up (docs/MODEL.md). Not done: col legno (the knocks), the seagull effect between harmonic nodes.
 - **Choosing an articulation** (as first planned): an Articulation choice (Arco, Staccato, Spiccato, Pizzicato,
@@ -88,9 +90,10 @@ most of 3b can be measured.
 - **Spiccato** (judgment, from staccato): bounced, shorter and lighter: the staccato takes at a lighter
   layer, a shorter stroke, more noise at the bounce. VSCO's violin spiccato (Phase 5's data) can size
   it if needed.
-- **Tremolo** (judgment; VSCO violin has tremolo to measure rate and shape): rapid bow changes, each a
-  small re-bow (the level dipping, the noise bursting, the patterns' movement reset), at a Tremolo
-  Rate (about 8-16 strokes a second) with some irregularity; measured or by ear.
+- **Tremolo** (as first planned; built otherwise, docs/TREMOLO.md: a re-bow modelled as level and noise
+  was heard as mechanical in every form): rapid bow changes, each a small re-bow (the level dipping,
+  the noise bursting, the patterns' movement reset), at a Tremolo Rate (about 8-16 strokes a second)
+  with some irregularity; measured or by ear.
 - **Natural harmonics** (measured from the slides): a finger lightly at 1/n of a string keeps only its
   partials that are multiples of n (the piano's Touch Point does this for a piano string). A note is
   played as the nearest natural harmonic of an open string (2nd-6th); the source keeps the string's

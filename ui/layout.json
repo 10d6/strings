@@ -203,66 +203,66 @@
     "body.wolfNote": "Where the wolf is. 175 Hz is about F3; most cellos' wolves are between E3 (165 Hz) and F#3 (185 Hz).",
     "bow.position": "Where the bow crosses the string. 0 is the normal place (about a tenth of the string from the bridge, as recorded). Towards the fingerboard (sul tasto, down to −100 %) the tone gets soft, round and a little airy; towards the bridge (sul ponticello, up to +100 %) it gets bright, then glassy and whistling, with a scratchier noise. The partials with a node where the bow is are weakened, as on the string.",
     "body.mute": "A mute on the bridge. Around 50 % is a performance mute (con sordino): veiled and nasal, a little quieter. 100 % is a heavy practice mute: muffled and much quieter. 0 is no mute.",
-    "play.articulation": "How the next notes are played (each note keeps the articulation chosen when it starts). Arco: held, bowed. Pizzicato: plucked, the finger's snap as recorded, then the string ringing down as measured. Staccato: a short bowed stroke from the cello's own staccatos (the bow leaves by itself, however long the key is held; louder and longer strokes the harder you play). Spiccato: bounced, shorter and lighter, the string ringing after the bow leaves. Tremolo: rapid bow changes (Tremolo Rate). Harmonics: a finger lightly on the string, a pure, flute-like tone: a natural harmonic of an open string where one sounds at the key, else an artificial one; below C3 no harmonic fits and the note is bowed as usual. Keyswitches (they don't sound): C1 Arco, D1 Staccato, E1 Spiccato, F1 Pizzicato, G1 Tremolo, A1 Harmonics. The Bow panel, Bow Noise, Grain, Bow Weight and Bow Position shape every bowed note; Dynamics shape held notes (Arco, Tremolo, Harmonics), and Slur joins Arco and Tremolo notes.",
-    "play.tremRate": "Tremolo: how many times a second the bow changes direction (each stroke a little longer or shorter, at random). At each change the level dips and the bow noise bursts. Notes started together share one bow, as in a double stop. Lower is a slow measured tremolo, higher a frantic one."
+    "play.articulation": "How the next notes are played (each note keeps the articulation chosen when it starts). Arco: held, bowed. Pizzicato: plucked, the finger's snap as recorded, then the string ringing down as measured. Staccato: a short bowed stroke from the cello's own staccatos (the bow leaves by itself, however long the key is held; louder and longer strokes the harder you play). Spiccato: bounced, shorter and lighter, the string ringing after the bow leaves. Tremolo: rapid bow changes, the cello's own recorded strokes (Tremolo Rate). Harmonics: a finger lightly on the string, a pure, flute-like tone: a natural harmonic of an open string where one sounds at the key, else an artificial one; below C3 no harmonic fits and the note is bowed as usual. Keyswitches (they don't sound): C1 Arco, D1 Staccato, E1 Spiccato, F1 Pizzicato, G1 Tremolo, A1 Harmonics. The Bow panel, Bow Noise, Grain, Bow Weight and Bow Position shape every bowed note but the tremolo's (its strokes are recordings); Dynamics shape held notes (Arco, Tremolo, Harmonics), and Slur joins Arco and Tremolo notes.",
+    "play.tremRate": "Tremolo: about how many times a second the bow changes direction. The strokes are the cello's own recorded staccatos, each bowed the way it goes, in a player's uneven rhythm around this rate (a long stroke, then a short; the pace drifting). Notes started together share one bow, as in a double stop. Lower is a slower, measured tremolo (6 at least), higher a frantic one."
   },
   "keyboard": true,
   "enabledWhen": {
     "life.amount": {
       "when": {
         "param": "play.articulation",
-        "isNot": "Pizzicato"
+        "notIn": ["Pizzicato", "Tremolo"]
       },
-      "why": "Bowed notes only: Articulation is Pizzicato."
+      "why": "Held, staccato, spiccato and harmonic notes: a plucked note has no bow, and the tremolo's strokes are recordings."
     },
     "life.pitch": {
       "when": {
         "param": "play.articulation",
-        "isNot": "Pizzicato"
+        "notIn": ["Pizzicato", "Tremolo"]
       },
-      "why": "Bowed notes only: Articulation is Pizzicato."
+      "why": "Held, staccato, spiccato and harmonic notes: a plucked note has no bow, and the tremolo's strokes are recordings."
     },
     "life.flicker": {
       "when": {
         "param": "play.articulation",
-        "isNot": "Pizzicato"
+        "notIn": ["Pizzicato", "Tremolo"]
       },
-      "why": "Bowed notes only: Articulation is Pizzicato."
+      "why": "Held, staccato, spiccato and harmonic notes: a plucked note has no bow, and the tremolo's strokes are recordings."
     },
     "life.speed": {
       "when": {
         "param": "play.articulation",
-        "isNot": "Pizzicato"
+        "notIn": ["Pizzicato", "Tremolo"]
       },
-      "why": "Bowed notes only: Articulation is Pizzicato."
+      "why": "Held, staccato, spiccato and harmonic notes: a plucked note has no bow, and the tremolo's strokes are recordings."
     },
     "tone.noise": {
       "when": {
         "param": "play.articulation",
-        "isNot": "Pizzicato"
+        "notIn": ["Pizzicato", "Tremolo"]
       },
-      "why": "Bowed notes only: Articulation is Pizzicato."
+      "why": "Held, staccato, spiccato and harmonic notes: a plucked note has no bow, and the tremolo's strokes are recordings."
     },
     "tone.grain": {
       "when": {
         "param": "play.articulation",
-        "isNot": "Pizzicato"
+        "notIn": ["Pizzicato", "Tremolo"]
       },
-      "why": "Bowed notes only: Articulation is Pizzicato."
+      "why": "Held, staccato, spiccato and harmonic notes: a plucked note has no bow, and the tremolo's strokes are recordings."
     },
     "bow.weight": {
       "when": {
         "param": "play.articulation",
-        "isNot": "Pizzicato"
+        "notIn": ["Pizzicato", "Tremolo"]
       },
-      "why": "Bowed notes only: Articulation is Pizzicato."
+      "why": "Held, staccato, spiccato and harmonic notes: a plucked note has no bow, and the tremolo's strokes are recordings."
     },
     "bow.position": {
       "when": {
         "param": "play.articulation",
-        "isNot": "Pizzicato"
+        "notIn": ["Pizzicato", "Tremolo"]
       },
-      "why": "Bowed notes only: Articulation is Pizzicato."
+      "why": "Held, staccato, spiccato and harmonic notes: a plucked note has no bow, and the tremolo's strokes are recordings."
     },
     "play.dynamics": {
       "when": {
@@ -299,16 +299,16 @@
     "body.wolf": {
       "when": {
         "param": "play.articulation",
-        "isNot": "Pizzicato"
+        "notIn": ["Pizzicato", "Tremolo"]
       },
-      "why": "Bowed notes only: Articulation is Pizzicato."
+      "why": "Held, staccato, spiccato and harmonic notes: a plucked note has no bow, and the tremolo's strokes are recordings."
     },
     "body.wolfNote": {
       "when": {
         "param": "play.articulation",
-        "isNot": "Pizzicato"
+        "notIn": ["Pizzicato", "Tremolo"]
       },
-      "why": "Bowed notes only: Articulation is Pizzicato."
+      "why": "Held, staccato, spiccato and harmonic notes: a plucked note has no bow, and the tremolo's strokes are recordings."
     },
     "play.tremRate": {
       "when": {

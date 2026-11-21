@@ -67,7 +67,7 @@ from CI at milestones.
   `tools/life.py --render` (the movement's statistics against the recordings: docs/MODEL.md's table),
   `--check`, and `stress.py` (`--keys 36-84`, `--mode overlap`, the full range, extremes, and the modes:
   `voiceMode=1`, `voiceMode=2 glide=…`, `play.strings=1`, `play.dynMode=1`, and each
-  `play.articulation=1…5`; Release 400 % needs `--tail 20`), and browser speed (`bench-web.cjs tests/four-strings.json`: 2.6-2.9× today with the room, 4.9× dry; a four-string tremolo 2.1×). The page is 12.4 MB. After changing the analysis or
+  `play.articulation=1…5`; Release 400 % needs `--tail 20`), and browser speed (`bench-web.cjs tests/four-strings.json`: 2.6-3.0× today with the room, 4.9× dry; a four-string tremolo 3.9×). The page is 15.5 MB. After changing the analysis or
   the engine's noise or movement, recalibrate (`calibrate_noise.py`, `calibrate_life.py`, then `calibrate_flicker.py`:
   docs/MODEL.md).
 - **Articulations** (3b, docs/MODEL.md: Pizzicato, Strokes, Tremolo, Harmonics): `play.articulation`
@@ -75,17 +75,25 @@ from CI at milestones.
   indices) and keyswitches (C1 D1 E1 F1 G1 A1 in that order of the keys: Arco, Staccato, Spiccato,
   Pizzicato, Tremolo, Harmonics), swallowed in `processEvents`, which records each key's articulation
   and round robin (`noteArt`, `noteRR`) for `start` to read (no parameters there). Plucked notes run
-  `pizzRun`, every bowed one `arcoRun` (strokes through `setupStroke` and `bowOff`; tremolo in `step`'s
-  articulation gain; harmonics through `hNode` in `place`); a string played again with another
+  `pizzRun`, every bowed one `arcoRun` (strokes through `setupStroke` and `bowOff`; tremolo through
+  `tremStroke`/`tremSample`, the release by `tremEnd`; harmonics through `hNode` in `place`); a string played again with another
   articulation switches at the restart. Strokes are their own data (`tools/staccato.py` →
-  `src/StaccData.h`; after a change, `tools/measure_stacc.py`: 23.5 % today, other takes 26.1), the
+  `src/StaccData.h`, the tremolo's strokes too; after a change, `tools/measure_stacc.py`: 23.4 % today, other takes 26.5,
+  and `tools/measure_trem.py`: 11.6 strokes/s, lengths 12.9 % sd, lag-1 −0.26, dips 8.2 dB, rms +0.1 dB on a held note), the
   harmonics' finger `src/TouchData.h` (`tools/touch.py`); never edit them by hand. Lessons: smooth a level
   in power, not dB (zero padding read as 0 dB: every take's "peak" at its first sample); compare a take
   only as long as its file runs (some end mid-ring); a stroke's own per-harmonic release made its tail
   right, but never let it be slower than the pooled one (half-second fits of a low fundamental ring on:
   stress found it); a long stroke must fade as its take did until its bow-off; notes started together
-  share a tremolo (one bow). Owner's ears on tremolo: a real one is smooth, two slightly distinct sounds
-  (down- and up-bow) with a brief, light change; a deep dip at each change sounded unbowed. Adding a parameter reshuffles the check's random patches: a new warning
+  share a tremolo's rhythm (one bow). **Tremolo** (docs/TREMOLO.md: ten rounds of listening): every
+  version that moved the model's levels (dips, swells, a recording's own per-harmonic movement) sounded
+  mechanical or watery; what the owner chose is recorded strokes (bigcat's staccato starts) bowed the
+  way each stroke goes (a bow change turns the string's motion over: the 2nd harmonic's phase against
+  the fundamental's flips, which sorts takes by direction), lined up at half a cycle, in a solo
+  player's measured rhythm (lengths 12-18 % sd, a long stroke then a short). Iterate on it with
+  listening files (offline prototypes), not engine changes: the owner asked for that. VSCO's "Cello
+  Section" is three players (its chorus came along); the Philharmonia's tremolos can be measured, never
+  shipped. Adding a parameter reshuffles the check's random patches: a new warning
   there may be an old bug (one found a plucked note at +718 dB: the mode rotation's series, past a wide
   bend; to see a hot patch, make the kit's check save it in a local, uncommitted edit). Pizzicato is its own data (`tools/pizz.py` → `src/PizzData.h` via
   `tools/make_pizz_header.py`; never edit by hand): the pluck as recorded (0.22 s, hand-off 0.15-0.21 s),
