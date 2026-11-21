@@ -472,7 +472,8 @@ Pizzicato: an octave under the cello's range, swallowed in `processEvents`, whic
 `ctx.setParam`, so the page and the host follow) sets how the next notes are played. Each note keeps
 the articulation chosen when it arrives (`processEvents` records it per key; the voice reads it in
 `start`, where parameters can't be read): a change during a note affects the next. D1, E1, G1 and A1
-are kept for Staccato, Spiccato, Tremolo and Harmonics (still to come); until then they play as notes.
+are Staccato, Spiccato, Tremolo and Harmonics (below). The choices are appended as they come, so
+patches keep their indices: Arco, Pizzicato, Staccato, Spiccato, Tremolo, Harmonics.
 
 A plucked note is a free decay: after the pluck it is the string's harmonics ringing down. It is
 measured from bigcat's pizzicato (`tools/pizz.py` → `tools/pizz.json` + `tools/pizz_onsets.npz` →
@@ -543,6 +544,96 @@ at 130 Hz) more than the sympathetic bank gives.
 Browser speed: a four-string chord at f struck 16 times with the pedal down (every voice ringing)
 2.5× realtime.
 
+A plucked note far from the pitch it was plucked at (a wide bend with a deep vibrato and Pitch Wander
+up, or Mono's voice moving to another note) turns each mode exactly: the series that serves vibrato
+grew there, and the check's random patches found a note at +718 dB (PR #12 fixed it).
+
+## Strokes: staccato and spiccato (Phase 3b)
+
+bigcat's staccatos are whole short strokes: the bow bites, the stroke peaks at 0.12-0.31 s, the bow
+leaves (the level 6 dB under its peak) at 0.14-0.66 s (median 0.28), the string rings down; the files
+end 0.5-1.1 s in, some mid-ring. A staccato is a bowed note played from its own take (`tools/staccato.py`
+→ `tools/stacc.json` + `tools/stacc_onsets.npz` → `tools/make_stacc_header.py` → `src/StaccData.h`):
+
+```
+python3 -I tools/staccato.py ../bigcat tools/stacc.json tools/stacc_onsets.npz    # ~1 min
+python3 -I tools/make_stacc_header.py tools/stacc.json tools/stacc_onsets.npz src/StaccData.h
+python3 -I tools/measure_stacc.py ../bigcat build/strings_render                  # ~1 min
+```
+
+- **Its take**: the nearest measured note's, at the velocity's nearest dynamic, two round robins per
+  note and dynamic (the two closest to the four's median envelope; the others are the yardstick).
+  Repeated staccatos are what the articulation is for, and one take would repeat exactly.
+- **Recorded until 0.25 s at most**: the take hands over at its bow-off or 0.25 s, whichever is first,
+  crossfading over 50 ms into the bank started in phase with it (the arco notes' machinery: each
+  harmonic's level and phase at the crossfade's middle, measured on the take). Recording every stroke
+  to its bow-off would take 2.7 MB a round robin; as it is, the onsets are 3.7 MB of samples (the page
+  grew from 7.1 to 12.4 MB).
+- **The bow leaves when the take's did**, whatever the key does: a key let go earlier changes nothing,
+  a key held on changes nothing. A stroke longer than its recording fades as its take did from the
+  hand-off to the bow-off (dB/s, measured): gliding to a held note's level instead, the bow left 200-345
+  ms late on F#2 and A2.
+- **The release is the take's own**, each harmonic as it decayed (from bow-off until 30 dB down, its
+  floor or 0.5 s; weak ones and failed fits take their neighbours' median), where that's faster than
+  the notes' pooled release (on the pooled one, the tails were 6.6 dB too bright at 1-2 kHz 0.15-0.45 s
+  after the bow left), never slower (a low fundamental's half-second fit, beating and ringing along,
+  read 16-19 dB/s on some takes, and stress found C3's ringing 3 s on at 10 dB/s).
+- **The level**: the staccatos' stroke level (their harmonics' peak, the round robins' median) at the
+  velocity, between notes and dynamics as the arco levels are, with its own Even Notes curve.
+
+**How close it is** (`tools/measure_stacc.py`: each kept take on its key at its dynamic's velocity, Even
+Notes off, dry, against its recording for as long as the file runs, at most 1 s): **23.5 %** by the
+perceptual distance (attack 0.1, early 9.6, late 57.0), against **26.1 %** for the same note and
+dynamic's other takes. Bow-off within 2 ms of the recording (median), the peak within 0.6 dB. The late
+window (0.5-1 s, the ring after the bow) is the largest part: the recordings hold the body's and the
+open strings' ring under high notes (−16 dB under 250 Hz 0.15-0.45 s after the bow), which the bank
+doesn't give (as for the arco release: a known gap).
+
+**Spiccato** (a judgment: bigcat has none) is the same takes bounced: the bow leaves just after the
+stroke has reached its level, 40 ms after it stands 10 dB under its peak (50-120 ms in), so the
+recording hands over there (30 ms crossfade, the harmonics measured there too) and the string rings
+down at once. The take is one dynamic lighter, and its level at the bounce 3 dB under the staccato's
+stroke at the same velocity. Not measured against anything; judged by eye: separate notes with clear
+dips between the bounces at 7 notes a second.
+
+## Tremolo (Phase 3b)
+
+A judgment (no tremolo in these recordings): a held bowed note whose bow changes direction Tremolo Rate
+times a second (4-24, default 12), each stroke 15 % longer or shorter at random. At each change the
+level dips (a raised cosine to the 4th power, 10 dB deep, about a fifth of a stroke wide), the bow
+noise bursts (9 dB more at the change) and each stroke's level varies by 1 dB rms. It runs from the
+note's start, the recorded onset included (the first stroke starts mid-way: no dip at the attack).
+Notes started in the same block share their strokes (the tremolo's random draws are seeded by the
+block), so a double stop is one bow: on separate clocks a fifth's dips blurred. Arco's slurs, vibrato,
+Dynamics and the rest apply.
+
+## Harmonics (Phase 3b)
+
+Measured from bigcat's four harmonic slides (`tools/touch.py` → `src/TouchData.h`): each bows an open
+string (C2, G2, D3, A3) for half a second, then a finger brushes along it across its harmonic nodes. At
+a node 1/n along, the touched string keeps its harmonics that are multiples of n: the note sounds n
+times the open pitch, its k-th harmonic the string's n·k-th. On the C and G strings the frequencies stay
+on the open string's harmonics; on D and A the finger also partly stops the string between nodes
+(partials sweep in arcs), so only clear node frames are used (the first three multiples of n 18 dB
+over the mean of the others: 0.1-1.8 s of frames per string and node, n = 2-6).
+
+- **What the finger takes**: per node and string, the kept harmonics' shape against the open string's
+  own bowed spectrum at the same harmonics, pooled by m (the median: one string's node scatters ±10 dB):
+  0 at m = 1-2, −3 dB at the 3rd, −7.5 at the 4th, about −9 to −10 from the 6th on. A purer, flute-like
+  tone.
+- **The level**: 7 dB under the open string bowed alike (the median over 19 nodes × strings; −3 to −9
+  by node, the A string's loud open start reads −22).
+- **Which harmonic**: a natural harmonic of an open string where one sounds at the key (nodes 2-6, within
+  half a semitone: C3, G3, C4, E4, G4 on the C string, and so on), else an artificial one on the lowest
+  string it fits (a stopped note touched a fourth above, node 4; else a fifth, 3; else an octave, 2).
+  Below C3 none fits and the note is bowed as usual. The pitch is the key's (natural harmonics' own
+  pitches are 14 cents flat on node 5: not played).
+- **The sound**: the bowed source read at the string's n·k-th harmonics (Bow Weight, Bow Position as
+  for any bowed note), less what the finger takes, through the body at k times the pitch as always; the
+  measured notes' corrections are left out (they belong to stopped notes). No recording starts it: it
+  swells in over 80 ms (a judgment) at its steady spectrum, then lives, moves and releases as a bowed
+  note. 4-7 dB under a bowed note at the same velocity.
+
 ## Controls
 
 All are modulation destinations except Articulation; none is measured except at its default (which is the cello as
@@ -576,7 +667,8 @@ recorded). Ranges and sizes are judgments.
 | Mute | `body.mute` | 0 % (0-100) | 50 % a performance mute, 100 % a practice mute (above) |
 | Body Size | `body.size` | 100 % (50-200) | the body's resonances moved as a larger or smaller body's |
 | Wolf, Wolf Note | `body.wolf`, `body.wolfNote` | 0 %, 175 Hz | a wolf note: the tone stuttering near it |
-| Articulation | `play.articulation` | Arco | Arco or Pizzicato, for the notes that follow; keyswitches C1, F1 (above). Not a modulation destination: a voice reads it as it starts |
+| Articulation | `play.articulation` | Arco | Arco, Pizzicato, Staccato, Spiccato, Tremolo, Harmonics, for the notes that follow; keyswitches C1 D1 E1 F1 G1 A1 (above). Not a modulation destination: a voice reads it as it starts |
+| Tremolo Rate | `play.tremRate` | 12 Hz (4-24) | Tremolo's bow changes a second |
 
 Life and Flicker multiply, so a harmonic's own movement is held to −40…+12 dB, and the level's to
 ±12 dB. Init has no vibrato (it plays the cello as recorded). Presets: *Still Bow*, *Restless Bow*,
@@ -587,7 +679,9 @@ a wider, looser vibrato), *Four Strings* (One Note Each, vibrato 12) and *Swell 
 (Close Mic)* (no room), *Distant Hall* (Reverb 55 %, a lighter bow), *Ringing Strings*, *Small Body*,
 *Big Cello* and *Old Cello With a Wolf*; from 3c, *Sul Tasto*, *Sul Ponticello*, *Con Sordino* and
 *Practice Mute*; from 3b, *Pizzicato*, *Walking Pizzicato* (rings longer when let go, the open
-strings a little louder, a drier room) and *Singing Pizzicato* (vibrato that blooms on a ringing note).
+strings a little louder, a drier room) and *Singing Pizzicato* (vibrato that blooms on a ringing note);
+then *Staccato*, *Spiccato* (a little more room), *Tremolo* (14 strokes a second) and *Harmonics* (more
+room, a little late vibrato).
 They were first set near the controls' ends to show their range, and sounded like
 it (the owner: weird); they are now settings a player might use. Two were dropped: with little body
 the bowed string alone is close to a sawtooth (the Helmholtz motion), which is what *Less Body*
@@ -646,7 +740,9 @@ time with `-DCMAKE_BUILD_TYPE=Release`.
 
 ## What isn't modelled (yet)
 
-- Staccato, spiccato, tremolo, harmonics (3b's second part).
+- Spiccato and tremolo are judgments (no recordings of either); the harmonics' onset is a swell (the
+  slides have none); the seagull effect between harmonic nodes (in the D and A slides) isn't played;
+  col legno (the 17 knocks) isn't used.
 - Pizzicato above C5 transposes C5's pluck (C6 plays it an octave up, twice as fast); a pluck position
   (the bow position's comb for the finger) isn't modelled; the recordings' own open strings ring more
   than the sympathetic bank gives a plucked note.

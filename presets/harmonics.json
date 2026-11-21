@@ -1,0 +1,15 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Harmonics",
+  "tags": [
+    "harmonics"
+  ],
+  "params": {
+    "play.articulation": 5,
+    "space.room": 35,
+    "vib.depth": 6,
+    "vib.delay": 0.4
+  }
+}
