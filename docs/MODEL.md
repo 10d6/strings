@@ -749,6 +749,35 @@ so 0 there is by construction (4 cells now play another take's onset: 3.9 % befo
   movement): the render dips 0.2 dB more than its own recording (median), 3.4 dB at worst. The
   movement starts after the crossfade; starting during it made the hand-off worse (0.6 dB).
 
+## Between the notes (`tools/leave_one_out.py`)
+
+Most notes played lie between the measured ones. Per measured note, the data is rebuilt without it
+(source × body refitted without its recordings, the other notes' corrections recomputed against that,
+its cells, onsets and release left out), the engine built from that in a copy of the repo, and the
+note rendered (Even Notes off, dry) against its own recording, as `measure.py` does. ~25 minutes.
+
+| 60 cells, D#2-A5 (median %) | raw | timbre | early (onset) | sustain |
+|---|---|---|---|---|
+| measured (the note in the data) | 3.5 | 2.9 | 1.8 | 9.3 |
+| **left out** | **31.4** | **29.2** | 34.5 | 23.4 |
+| a sampler at the same gap (a neighbour's recording transposed) | 39.8 | 40.0 | | |
+
+- **Better than transposing**: the left-out note is closer to its recording than a neighbour's
+  recording transposed to it in 54 of 60 cells (timbre: 29.2 against 40.0). Source × body and the
+  levels between the notes do what they're for.
+- **Much further than a measured note**, and further than another take of the same note (20.1 %):
+  a measured note plays its own recorded onset and its own spectrum (the corrections, 3.3 dB rms);
+  left out, it plays a neighbour's onset transposed 3 semitones (the early window, 34.5) and source ×
+  body alone (the sustain, 23.4 against 9.3).
+- **Pessimistic for real playing**: a left-out note is 3 semitones from the nearest measured note; a
+  note between measured ones is 1-2 (and plays the nearer neighbour's onset and part of its
+  corrections). No recording between the notes exists in this library to measure that directly
+  (Iowa MIS has every semitone, of another cello).
+- By dynamic (timbre): p 37.2, mp 28.8, mf 25.3, f 24.0; by note, C5 best (22), A5 worst (43). The
+  ends (C2, C6), extrapolated: 38.7.
+- Not refitted: the movement's per-note smoothing and the calibrations (neither is what the
+  distance measures).
+
 ## Speed
 
 In the browser (Chromium; `synthkit/web/test/bench-web.cjs`): four low notes at f (C2, G2, D3, A3:
