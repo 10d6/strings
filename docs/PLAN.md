@@ -7,144 +7,141 @@ does.
 
 **One synth, two instruments.** An **Instrument** choice (Cello, Violin) selects the measured data
 set, and both share the engine, the controls and the page. Each instrument's data is a few MB of
-generated header, as the piano's is, so carrying both costs nothing at run time. If the browser page
-grows past what loads comfortably, split them into two builds of the same source.
+generated header, as the piano's is. Whether the browser page carries both or is built twice from
+the same source is decided at the start of Phase 5 (the page is 15.5 MB with the cello alone).
 
 ## Sources
 
 `docs/SOURCES.md` lists the recordings, their licenses and what each is used for. In short:
 
 - Cello: **Karoryfer × bigcat Cello** (CC0, primary) and **University of Iowa MIS cello**
-  (unrestricted; dry, every note, pp/mf/ff per string).
+  (unrestricted; dry, every note, pp/mf/ff per string; not reachable from the workspace).
 - Violin: **VSCO 2 CE Solo Violin** (CC0, primary) and **Iowa MIS violin**.
+- Research: [`10d6/instrument-research`](https://github.com/10d6/instrument-research): a knowledge base
+  on bowed strings (physics, body, articulations, recording; claims tagged by how sure they are) and
+  CC0 measurements from VSCO 2 CE (a solo violin's body response, its vibrato, tremolo statistics),
+  with the scripts that made them. Cite it by section (`KB §11.2`) where a judgment leans on it.
 
-## Where it stands (2026-11-20)
+## Where it stands (2026-11-21)
 
-The cello is playable and was judged by ear at every step (Phases 0-3, PRs #1-#11, all merged). 3b's
-articulations are built: pizzicato (PR #10, merged), then staccato, spiccato, tremolo and harmonics
-(PR #12, for the owner's ears). Next: Phase 4, calibration and a `v0.1` release.
+The cello is complete through Phase 3 and was judged by ear at every step (PRs #1-#12, all merged).
 `docs/MODEL.md` is the reference for how everything works and why; `CLAUDE.md` has the rules, the
 lessons and the checks to run.
 
 - **The note**: the recorded onset (0.4 s) handing over to a harmonic bank: source × body plus the
   measured notes' own corrections and the body's fine detail; the bow's measured movement; bow noise
   pulsing at the string's period; the release from the staccatos.
-- **Playing** (3a): Dynamics From Velocity or Controller (CC 1 and 11); vibrato; Legato and Mono with
-  Glide; Slur (a dip and the vibrato starting again); One Note Each (four strings); Even Notes; Bow
-  Weight.
-- **Pizzicato** (3b, first part): the pluck as recorded, then each harmonic's measured modes ringing
-  down (`tools/pizz.py`); Articulation (Arco, Pizzicato) and keyswitches C1, F1. 8.0 % from its
-  recordings (another take of the same note: 16.8 %).
-- **Bow colour** (3c): Bow Position (sul tasto … sul ponticello), the Mute.
-- **Body and room** (3d): a room (synthkit's `dsp::Reverb`, the piano's); sympathetic open strings;
-  Body Size; a wolf.
+- **Playing** (3a): Dynamics From Velocity or Controller; vibrato; Legato and Mono with Glide; Slur;
+  One Note Each; Even Notes; Bow Weight. **Articulations** (3b): arco, pizzicato, staccato, spiccato,
+  tremolo, natural and artificial harmonics, with keyswitches C1-A1. **Bow colour** (3c): Bow
+  Position, the Mute. **Body and room** (3d): a room, sympathetic open strings, Body Size, a wolf.
 - **Numbers today**: 4.2 % median from the recordings (timbre 3.0; 3.5 and 2.7 at their own pitch);
-  hand-off 0.2 dB; browser 2.6× realtime on four low notes with the room. 25 presets.
+  hand-off 0.2 dB; pizzicato 8.0 %; staccato 23.4 %; browser 2.6× realtime on four low notes with the
+  room. 25 presets.
 
 **What the owner has said** (the decisions that stand): one synth with an Instrument choice; the
 browser page is for quick testing, so no big quality trade-offs for its speed; Still Bow (no
 movement) sounded good and every movement since was judged against it; the level moves below 2 Hz
 only; vibrato is convincing; slurs needed the dip and the vibrato restarting; the notes needed
 evening out; the recordings' tone is edgy (close-miked), which Bow Weight, Bow Position and the room
-answer. The owner tests each PR on its Pages preview and installs plugin zips at milestones.
+answer; tremolo is recorded strokes in a player's rhythm (docs/TREMOLO.md), iterated with listening
+files rather than engine changes. The owner tests each PR on its Pages preview and installs plugin
+zips at milestones.
 
 ## What's left
 
-### 3b: articulations (done, PR #12 for the owner's ears)
+### 4: playing it, then calibrating (in this order)
 
-bigcat has more for this than the first plan assumed (`docs/PHASE0.md`): **pizzicato** (13 notes × 4
-round robins, 0.75-7 s, decaying 12-45 dB/s), **staccato** (the 17 notes × 4 dynamics × 4 round
-robins, 0.5-2 s, ending in the free decay), a **harmonic slide** per string, and 17 **knocks**. So
-most of 3b can be measured.
+Playing comes before calibration: the cello is complete enough to use, and what a player meets in a
+DAW should decide where calibration effort goes.
 
-- **Done (PR #10)**: the Articulation choice (Arco, Pizzicato so far; the others are appended as they
-  come, so patches keep their indices), keyswitches C1 Arco and F1 Pizzicato, and pizzicato
-  (docs/MODEL.md: Pizzicato). The owner chose: pizzicato first in its own PR, the rest in a second;
-  keyswitches from C1 on white keys (D1 Staccato, E1 Spiccato, G1 Tremolo, A1 Harmonics are kept for
-  them). Not a modulation destination: voices read it as they start, through `processEvents`. Left
-  from the pizzicato: above C5 (C5's pluck transposed), a pluck position, the recordings' louder open
-  strings.
-- **Done (PR #12)**: staccato (measured: each take's own stroke, bow-off and release, the two kept
-  takes bowed one each way; 23.4 % from its recordings, another take 26.5), spiccato (a judgment from
-  the staccatos), tremolo (bigcat's staccato strokes as recorded, each bowed the way its stroke goes,
-  in a solo player's measured rhythm; notes started together share one bow; ten rounds of listening:
-  docs/TREMOLO.md), natural and artificial harmonics (measured from the slides),
-  keyswitches D1, E1, G1, A1, Tremolo Rate; and a fix for a plucked note far from its pitch, which blew
-  up (docs/MODEL.md). Not done: col legno (the knocks), the seagull effect between harmonic nodes.
-- **Choosing an articulation** (as first planned): an Articulation choice (Arco, Staccato, Spiccato, Pizzicato,
-  Tremolo, Harmonics), modulatable, and **keyswitches** (low keys below the cello's range, swallowed
-  in `processEvents`, which moves the choice with `ctx.setParam`: API.md §4a; check the page's
-  keyboard shows them). A voice reads it at its start; changing it during a note affects the next.
-- **Pizzicato** (measured; done, as planned here except as docs/MODEL.md says): decaying modes, as the piano's partials. A tool like `analyze.py` for the
-  pizzicato files: per note, each harmonic's initial level and decay rate, fitted as a pluck source ×
-  the same body (the body fit is shared), plus a recorded pluck onset (about 50-100 ms, the finger's
-  snap, as the arco onset is kept) handing over to decaying harmonics in phase (the same `handDb` /
-  `handPh` machinery). Velocity sets the pluck's strength (the four round robins span no dynamics:
-  check, and if they don't, velocity scales level and brightness by a judgment). The fine detail and
-  sympathetic strings apply as they are; vibrato on a plucked note is possible (left hand). Pluck
-  position as Bow Position's comb (a judgment).
-- **Staccato** (measured): the bow leaves after the stroke whatever the key does. The staccato takes'
-  first part as the onset (their own, not the sustains'), the model for the rest of the stroke, and
-  the release; the stroke's length from the takes (bow off where they fall 6 dB). Their four round
-  robins rotate.
-- **Spiccato** (judgment, from staccato): bounced, shorter and lighter: the staccato takes at a lighter
-  layer, a shorter stroke, more noise at the bounce. VSCO's violin spiccato (Phase 5's data) can size
-  it if needed.
-- **Tremolo** (as first planned; built otherwise, docs/TREMOLO.md: a re-bow modelled as level and noise
-  was heard as mechanical in every form): rapid bow changes, each a small re-bow (the level dipping,
-  the noise bursting, the patterns' movement reset), at a Tremolo Rate (about 8-16 strokes a second)
-  with some irregularity; measured or by ear.
-- **Natural harmonics** (measured from the slides): a finger lightly at 1/n of a string keeps only its
-  partials that are multiples of n (the piano's Touch Point does this for a piano string). A note is
-  played as the nearest natural harmonic of an open string (2nd-6th); the source keeps the string's
-  multiples of n with the slides' measured spectra (fewer, flute-like partials), the body as always.
-  The slides sweep continuously, so they also give the touch's own sound between nodes.
-- **Knocks / col legno** (optional): the knocks are short enough to play as recorded.
-- Check, as every phase: the measures in `CLAUDE.md`, renders looked at and listened to, demos for the
-  owner, presets that a player would use.
+1. **A regression check** (`tools/regress.py`): runs every measure (`measure.py`, `handoff.py`,
+   `life.py --render`, `measure_pizz.py`, `measure_stacc.py`, `measure_trem.py`) and compares their
+   summary numbers with `tools/baseline.json`, within tolerances. One command after any change to the
+   sound, and the check that a fresh workspace reproduces today's numbers. A change that moves a number
+   on purpose updates the baseline in the same PR.
+2. **`v0.1`, tagged now**: the cello as it is, for the owner in Ableton (VST3, Windows: the main
+   target) and GarageBand (AU). What to listen for: CPU with several instances, automation and MIDI
+   mapping, saving and reloading, the presets, repeated notes, phrases. That feedback sets the
+   priorities of everything below.
+3. **What a player hears first** (small PRs, each for the owner's ears):
+   - **Up-bow onsets.** Only the down-bow onsets ship, so a repeated note plays the same attack every
+     time. bigcat has every note and dynamic bowed both ways: alternate them (as the staccato already
+     does), at the cost of the page's size (measure it first).
+   - **The dynamic range.** The recordings' p to f is 13 dB (median; 4-19 by note); measured violin
+     crescendos span 27-31 dB and pp-ff about 37-40 (KB §11.5, Demoucron). Ask the owner whether f
+     should stand further from p, and if so offer a range control (extrapolating along the measured
+     dynamics, as Bow Weight does).
+   - **Bow Position's node notch.** The engine weakens the partials with a node at the bowing point
+     (`kPosNodeFloor`); in bowing, unlike plucking, they are not removed (KB §1.1, tagged from memory):
+     the bowing point shows as ripples instead. A/B with and without the notch.
+   - **The room's feed.** The room is fed the dry close-miked sound; a room hears an instrument's
+     power response over all directions, smoother and darker above 1 kHz (KB §12.3e). A gentle
+     high-frequency tilt on the send (and later perhaps a Mic Distance control) answers the edge where
+     it comes from.
+   - **Col legno** (optional): the 17 knocks are short enough to play as recorded.
+4. **Leave one note out** (Phase 0's test, now on the engine): rebuild the header without a measured
+   note and measure the render of that note against its recording, for every note: how well the model
+   plays the notes between the measured ones (where most notes are).
+5. **Listening in phrases.** The single held notes are where the model is closest (4.2 %); slurs, bow
+   changes, vibrato and repeated notes are where it isn't, and the recordings have none of them. Render
+   phrases for the owner (and any reference cello, for listening only); revisit the judgments (Even
+   Notes' curve, the sympathetic coupling, Slur's dip, the room's default, Bow Position's extremes, the
+   vibrato's string scaling) where the listening points, not all of them.
+6. **Known gaps, if they're heard**: the pitch wander reads 1.09 cents rms against the recordings' 1.58;
+   a few cells move more than their recordings (C3 f, C2 mf, C5 f, F#2 f); the renders' late release
+   sits higher than the recordings' (−86 against −94 dB 0.3 s after a staccato is 36 dB down: likely
+   under the room); the staccatos' late sympathetic ring. Browser speed (2.6×) only if the page stops
+   being usable for testing.
+7. **`v0.2`** with what came of 3-6.
 
-### 4: calibration and listening
-
-- **Leave one note out** (Phase 0's test, now on the engine): rebuild the header without a measured
-  note and measure the render of that note against its recording, for every note: how well the model
-  plays the notes between the measured ones (where most notes are).
-- **Blind listening**: a page (or a set of files) pairing renders with recordings at random, for the
-  owner to tell apart and to rate; the distance and `life.py` say where to look, the owner's ears
-  decide.
-- **The judgments, revisited by ear**: Even Notes' curve, the sympathetic coupling, Slur's dip, the
-  room's default, Bow Position's extremes, the vibrato's string scaling.
-- **Known gaps** to look at: the pitch wander reads 1.09 cents rms against the recordings' 1.58; a few
-  cells move more than their recordings even with no flicker (C3 f, C2 mf, C5 f, F#2 f: their level's
-  own movement); the renders' late release sits higher than the recordings' (−86 against −94 dB 0.3 s
-  after a staccato is 36 dB down); the staccatos' late sympathetic ring isn't reproduced (a model of a
-  note's string coupled to its open neighbour might); speed in the browser (2.6×).
-- **A milestone release**: tag `v0.1` (CI makes a release from the plugin zips) for the owner to try in
-  Ableton (VST3, Windows: the main target) and GarageBand (AU).
+Ideas from the research to try once the above is done, each a judgment for the owner's ears:
+decorrelated stereo (a second fine-detail curve for the right channel, so vibrato moves differently
+in each ear: KB §5.5, §8.4; about one multiply-add per harmonic); a wolf that beats per harmonic and is
+worst at light bowing (KB §5.4); release types (bow lift, bow stopped on the string, finger lifted:
+KB §11.2); a held note re-bowed by turning the waveform over (what tremolo found a bow change is) in
+place of Mono's fade and new onset; tremolo's down/up level difference and a rate that rises with the
+dynamic (KB §11.2: cello section 11.2 soft, 12.7 loud), after checking what the recorded strokes
+already carry; spiccato's contact time as a control (60-100 ms measured; under 20 ms sounds like col
+legno, over 140 ms thrown: KB §11.5).
 
 ### 5: violin
 
-- **Inventory** VSCO 2 CE's solo violin (CC0) as Phase 0 did the cello: notes, layers, round robins,
-  articulations, tuning, room. It has vibrato, which changes the analysis:
-  - the sustain's spectrum: average over whole vibrato cycles;
-  - the bow's movement: separate the vibrato (a band around 5-7 Hz, and its harmonics) from the wander;
-  - the body's fine detail can be **measured** here, not just its statistics: the vibrato sweeps each
-    harmonic across ±20 cents of the body, which the cello's 1-2 cent wander couldn't resolve;
-  - the onset needs a take or a moment before the vibrato starts, or the hand-off has to meet it.
-- **Generalise the tools** by instrument (open strings G3 D4 A4 E5, the note range, the layer names,
-  the data path), and the header (`ViolinData.h` beside `CelloData.h`); the engine reads the chosen
-  instrument's tables (a pointer per voice, set at its start). Each instrument's calibrations
-  (`*_adjust.json`) are its own.
-- **The Instrument choice** (Cello, Violin) selects the data; the controls stay; presets per instrument.
-  If the browser page gets too large with both, build the two separately from the same source.
-- Iowa MIS (anechoic, every note, per string) can fill gaps if it's attached by hand: the workspace
-  can't reach it.
+1. **A spike first, as Phase 0 was** (go / no-go): analyse one or two of VSCO 2 CE's solo violin notes,
+   take the vibrato out, resynthesise, A/B against the recordings. The violin is harder than the
+   cello in three ways:
+   - **Vibrato is narrow**: 6-33 cents peak to peak, median 16 (about ±8), 4.5-5.3 Hz
+     (instrument-research `data/articulation_measurements/`, leaving out G3 and A6 f). It still
+     sweeps each harmonic across the body further than the cello's 1-2 cent wander, so the body's
+     fine detail can be measured, but over about ±8 cents, not ±20.
+   - **Vibrato from the first moment**: the samples have no still start to hand over from, so the
+     hand-off has to meet a vibrating note (the onset recording moving in pitch, the bank following it).
+   - **A room in the recordings**: the body fit takes it in.
+   instrument-research's `tools/fetch_vsco.sh` (only the string folders) and `body_response.py` (the
+   same source × body factorisation, 4.1 dB per harmonic on held-out notes; it assumes a 1/n source and
+   bakes in the library's microphones and room) make the spike cheap; use its response to check this
+   repo's fit, not as shipped data.
+2. **Decide the page**: one page with both instruments, or two builds of the same source.
+3. **Generalise the tools** by instrument (open strings G3 D4 A4 E5, the note range, the layer names,
+   the data path), and the header (`ViolinData.h` beside `CelloData.h`); the engine reads the chosen
+   instrument's tables (a pointer per voice, set at its start). Each instrument's calibrations
+   (`*_adjust.json`) are its own.
+4. **The pipeline on the violin**: inventory (notes, layers, round robins, articulations, tuning);
+   the sustain's spectrum averaged over whole vibrato cycles; the bow's movement with the vibrato (5-7
+   Hz and its harmonics) separated from the wander; onsets, pizzicato, strokes, tremolo (measure its
+   tremolos as docs/TREMOLO.md did: shared patterns, rhythm, the 2nd harmonic's flips).
+5. **The Instrument choice** (Cello, Violin) selects the data; the controls stay; presets per instrument.
 
-### 6: experiment
+### 6: experiment (time-boxed, offline)
 
-A waveguide bow-friction engine (a string as two delay lines and a friction curve at the bow) as a
-second model, judged on the same distance and by ear against this one. It could give what this
-can't measure: real Helmholtz motion breaking up (overpressure, flautando), legato transitions,
-double-slip. An experiment: kept only if it wins somewhere.
+A waveguide bow-friction model (a string as two delay lines and a friction curve at the bow) for
+what this engine can't measure: bow changes, attacks, slurs, flautando, overpressure. Judged by ear on
+those, not by the distance (a model not fitted to bigcat's spectra will lose there, and that isn't what
+it's for). instrument-research's KB §10 (a minimal waveguide with defaults) is the starting point, with
+§2.1 (measured cello strings and their damping), §6.4 (oversampling: f_s ≥ 20·f0/β at the junction),
+§7.3 (keeping the bow inside its playable window) and §11.5 (measured bow gestures). An offline
+prototype first, which can run alongside Phase 5; if it wins somewhere, the likely shape is a hybrid:
+the waveguide for transitions inside this engine.
 
 ### Other threads
 
@@ -152,6 +149,9 @@ double-slip. An experiment: kept only if it wins somewhere.
   synthkit's `dsp::Reverb` (the same algorithm; renders within 0.03 dB) in a piano PR.
 - bigcat's sfz programs include "legato" maps, which look like crossfades of sustains rather than
   recorded transitions: check before assuming legato can be measured.
+- Left from 3b (docs/MODEL.md: What isn't modelled): pizzicato above C5 (C5's pluck transposed), a
+  pluck position, the recordings' louder open strings under a pluck; tremolo slower than 6 strokes a
+  second; the seagull effect between harmonic nodes.
 
 ## Starting a new session
 
@@ -160,73 +160,45 @@ double-slip. An experiment: kept only if it wins somewhere.
    the analysis tools take the path).
 2. Build and check: `cmake -S . -B build-rel -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build
    build-rel`, then `./build-rel/strings_render --check . --out /tmp/renders` and `python3 -I
-   tools/measure.py ../bigcat build-rel/strings_render` (4.2 %, timbre 3.0): if those match, the
-   workspace is right.
-3. Read `docs/MODEL.md` for the engine, then start on Phase 4 above, on a branch, with a PR when it's
-   ready for the owner's ears.
+   tools/regress.py ../bigcat build-rel/strings_render` (once it exists; until then `tools/measure.py`:
+   4.2 %, timbre 3.0): if those match, the workspace is right.
+3. Read `docs/MODEL.md` for the engine, then pick up Phase 4 above where it stands, on a branch, with a
+   PR when it's ready for the owner's ears.
 
 ## The model
 
 A bowed note is driven rather than struck, so the sustain is a different core from the piano's
-decaying partials. The rest of the piano's pipeline carries over.
+decaying partials. The rest of the piano's pipeline carries over. `docs/MODEL.md` has it in full.
 
 - **Sustain: source × body.** Each harmonic's level is the bowed string's spectrum (set by bow speed
-  and pressure) times one fixed body response at that harmonic's frequency. The two are fitted
-  separately across every note and dynamic. Vibrato and portamento then sweep the harmonics across
-  the body's resonances, as on the real instrument, which is much of why vibrato sounds alive, and
-  notes between the sampled ones interpolate without spectral artifacts.
-- **Onset: recorded.** Sinusoidal tracking with time-varying frequencies (bow onsets glide in pitch,
-  so the piano's fixed notches would leave residue) gives each harmonic's swell. What's left (the
-  scratch and noise) is stored, 0.2-0.3 s per measured note and layer, as `PianoStrike.h` is.
-- **Bow noise.** Pitch-synchronous noise, measured in bands and played through the body.
-- **Release.** The string's own decay and the body's short ring.
-- **Pizzicato.** Decaying modes, exactly as the piano's partials.
-
-## Controls (as first proposed; what's built is above and in docs/MODEL.md's Controls)
-
-- **Playing:** Instrument; continuous Dynamics (CC11, mod wheel or aftertouch, with velocity setting
-  only the onset); Bow Pressure; Bow Position (sul tasto … sul ponticello, from the comb a bowing
-  point puts on the spectrum, as the piano's Strike Point); Sordino.
-- **Expression:** vibrato (rate, depth, delay, irregularity); legato with portamento (the kit's
-  legato mode); one voice per string (`allocateVoice`) for real double stops.
-- **Articulations:** arco, pizzicato, spiccato, tremolo, natural harmonics (the piano's Touch Point).
-- **Body:** open strings ringing in sympathy (the piano's free-string bank), wolf tone, body size
-  (a morph towards viola- or bass-like colour).
-- **Around it:** a room (the piano's `Reverb.h`, which with a second synth needing it is a candidate
-  for the kit) and the kit's modulation and arpeggiator.
+  and pressure) times one fixed body response at that harmonic's frequency, fitted separately across
+  every note and dynamic. Vibrato and portamento sweep the harmonics across the body's resonances, as
+  on the real instrument.
+- **Onset: recorded**, handing over to the model in phase.
+- **Bow noise**: pitch-synchronous noise, measured in bands.
+- **Release**: the string's own decay, from the staccatos.
+- **Pizzicato**: the pluck recorded, then decaying modes, as the piano's partials.
 
 ## Phases
 
-0. **Inventory and spike** (done: `docs/PHASE0.md`; the architecture holds). Download the sources and record what's actually there (rates, layers,
-   vibrato or not, release samples, licenses). Analyse and resynthesise one cello note, and A/B it
-   against its recording. If that isn't convincing, change the architecture before building on it.
-1. **Analysis tools** (done: `docs/MODEL.md`; with a minimal voice that plays the data, so it is checked
-   by rendering: 3.0 % from the recordings) (`tools/`, Python, offline): f0 and harmonic tracking that survives vibrato,
-   onset residuals, the source × body factorisation, noise bands, onset envelopes, a header
-   generator.
-2. **Engine v1** (done: `docs/MODEL.md`): a living sustain (the bow's pitch, level and each harmonic's
-   own movement, measured from the recordings and calibrated to match them), noise that pulses with
-   the string, the body following the pitch, harmonics to 16 kHz, parameters, page, presets.
-3. **Playability:** the controls above, in four parts, each a set to judge by ear:
-   - **3a, playing** (done; `docs/MODEL.md`: Playing): continuous dynamics, vibrato (with the body's
-     fine detail it sweeps through, measured from the bow's wander), legato and portamento, one note
-     per string, Slur, Even Notes, Bow Weight.
-   - **3b, articulations** (done: docs/MODEL.md): pizzicato, staccato, spiccato, tremolo, natural and
-     artificial harmonics.
-   - **3c, bow colour** (done): pressure (Bow Weight, in 3a), position (tasto … ponticello), the mute.
-   - **3d, body and room** (done): a room (synthkit's reverb, from the piano), sympathetic strings,
-     body size, a wolf tone.
-4. **Calibration:** a leave-one-note-out test on the engine, blind listening, the judgments revisited,
-   a `v0.1` release (What's left, above).
-5. **Violin:** the same pipeline on VSCO's violin, with its vibrato taken out (and used: it measures
-   the body's fine detail).
-6. **Experiment:** a waveguide bow-friction engine as a second model, judged on the same distance.
+0. **Inventory and spike** (done: `docs/PHASE0.md`).
+1. **Analysis tools** (done: `docs/MODEL.md`).
+2. **Engine v1** (done): a living sustain, noise that pulses with the string, harmonics to 16 kHz.
+3. **Playability** (done): 3a playing, 3b articulations, 3c bow colour, 3d body and room.
+4. **Playing it, then calibrating**: regression check, `v0.1`, what a player hears first, leave one
+   note out, listening in phrases, known gaps, `v0.2`.
+5. **Violin**: a spike first, then the same pipeline on VSCO's violin.
+6. **Experiment**: a waveguide model for transitions, offline and time-boxed, judged by ear.
 
 ## Risks and gaps
 
-- The violin will trail the cello: one good library, with vibrato to take out and some room in it.
+- The violin will trail the cello: one good library, with vibrato from the start, a narrow vibrato to
+  measure the body with, and some room in it.
 - Not measurable from these libraries, so judgments (each flagged in `docs/MODEL.md`): Bow Position,
   the mute, legato transitions and Slur, the wolf, Body Size, the sympathetic coupling, Even Notes'
-  curve, the room's level, the vibrato (sized from published measurements of cellists).
+  curve, the room's level, the vibrato (sized from published measurements of cellists), spiccato.
+- Statistics measured from recordings that can't ship (the Philharmonia's tremolos, for the tremolo's
+  rhythm) are facts, not audio; where a CC0 measurement agrees (instrument-research's VSCO tremolo
+  statistics), cite it beside them.
 - The page's keyboard has velocity and a mod wheel, enough to play the dynamics; a bow pad on the
   page (a custom page, API.md §9a) is still an option.
