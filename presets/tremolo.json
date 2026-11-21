@@ -1,0 +1,13 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Tremolo",
+  "tags": [
+    "tremolo"
+  ],
+  "params": {
+    "play.articulation": 4,
+    "play.tremRate": 14
+  }
+}

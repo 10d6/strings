@@ -1,0 +1,12 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Staccato",
+  "tags": [
+    "staccato"
+  ],
+  "params": {
+    "play.articulation": 2
+  }
+}
