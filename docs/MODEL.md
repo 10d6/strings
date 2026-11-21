@@ -599,13 +599,18 @@ dips between the bounces at 7 notes a second.
 ## Tremolo (Phase 3b)
 
 A judgment (no tremolo in these recordings): a held bowed note whose bow changes direction Tremolo Rate
-times a second (4-24, default 12), each stroke 15 % longer or shorter at random. At each change the
-level dips (a raised cosine to the 4th power, 10 dB deep, about a fifth of a stroke wide), the bow
-noise bursts (9 dB more at the change) and each stroke's level varies by 1 dB rms. It runs from the
-note's start, the recorded onset included (the first stroke starts mid-way: no dip at the attack).
-Notes started in the same block share their strokes (the tremolo's random draws are seeded by the
-block), so a double stop is one bow: on separate clocks a fifth's dips blurred. Arco's slurs, vibrato,
-Dynamics and the rest apply.
+times a second (4-24, default 12), each stroke 10 % longer or shorter at random. Down- and up-bows are
+two slightly different sounds: the down-bow 0.15 of a dynamic layer heavier, the up-bow as much lighter
+(level and timbre: the harmonics follow in 30 ms, as they follow any dynamic), each stroke's level
+varying by 0.5 dB rms. The change itself is brief and light: a raised cosine 10 ms wide around each turn,
+dipping 4 dB, with 4 dB more bow noise at its middle. It runs from the note's start, the recorded onset
+included (the first stroke starts mid-way: no change at the attack). Notes started in the same block
+share their strokes (the tremolo's random draws are seeded by the block), so a double stop is one bow:
+on separate clocks a fifth's changes blurred. Arco's slurs, vibrato, Dynamics and the rest apply.
+
+The owner's ears on the first version (a 10 dB dip over a fifth of every stroke, a 9 dB noise burst):
+"cool but not really like it's being bowed"; a real tremolo is smoother, mostly two slightly distinct
+sounds from the two bow directions, the change itself very brief and not strong.
 
 ## Harmonics (Phase 3b)
 

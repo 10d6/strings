@@ -139,10 +139,6 @@ constexpr int kKeySwitch[][2] = {{24, kArco}, {26, kStacc}, {28, kSpicc}, {29, k
 // Spiccato (a judgment, from the staccatos: docs/MODEL.md): the take one dynamic lighter, its level at
 // the bounce this far under the staccato's stroke at the same velocity.
 constexpr float kSpiccDb = 3;
-// Tremolo (a judgment: no tremolo in these recordings): the bow changing direction Tremolo Rate times a
-// second, each stroke kTremVary longer or shorter at random; at each change the level dips (raised
-// cosine to the 4th, kTremDipDb deep, about a fifth of a stroke wide) and the bow noise bursts
-// (kTremNoiseDb more at the change), and each stroke's level varies by kTremLevelDb rms.
 // Harmonics (docs/MODEL.md: Harmonics): a note is a natural harmonic of an open string where one
 // sounds at its key (nodes 2-6, within half a semitone), else an artificial one (a stopped note touched
 // a fourth above: node 4; then a fifth, 3; then an octave, 2) on the lowest string it fits; below C3
@@ -160,7 +156,15 @@ int harmonicNode(double midi) {
     if (midi - 12.0 * std::log2(static_cast<double>(n)) >= 36.0 - 1e-6) return n;
   return 1;
 }
-constexpr float kTremVary = 0.15f, kTremDipDb = 10, kTremNoiseDb = 9, kTremLevelDb = 1;
+// Tremolo (a judgment: no tremolo in these recordings): the bow changing direction Tremolo Rate times a
+// second, each stroke kTremVary longer or shorter at random. Down- and up-bows are two slightly
+// different sounds: the down-bow kTremDyn of a dynamic layer heavier, the up-bow as much lighter (level
+// and timbre, the harmonics following in 30 ms as they follow any dynamic), and each stroke's level
+// varies by kTremLevelDb rms. The change itself is brief and light: kTremChangeS wide, a dip of
+// kTremDipDb and kTremNoiseDb more bow noise at its middle. (First version: a dip of 10 dB over a fifth
+// of every stroke and a 9 dB noise burst; the owner heard it as not bowed: a real tremolo is smoother.)
+constexpr float kTremVary = 0.1f, kTremDyn = 0.15f, kTremLevelDb = 0.5f;
+constexpr float kTremChangeS = 0.010f, kTremDipDb = 4, kTremNoiseDb = 4;
 int keyswitchArt(int note) {
   for (const auto& k : kKeySwitch)
     if (k[0] == note) return k[1];
@@ -465,7 +469,7 @@ struct StringsVoice : Voice {
 
   // parameter values for this render call
   float pLife = 1, pPitch = 1, pFlicker = 1, pSpeed = 1, pBody = 1, pNoiseDb = 0, pGrain = 1, pRelease = 1;
-  float pTremRate = 12, tremPh = 0, tremLen = 1, tremLevel = 1, tremNoise = 1;
+  float pTremRate = 12, tremPh = 0, tremLen = 1, tremLevel = 1, tremNoise = 1, tremDir = 1;
   float pDyn = 2, pVibDepth = 0, pVibRate = 5.5f, pVibDelay = 0.3f, pVibAttack = 0.5f, pVibVary = 0.4f, pGlide = 0;
   float pWeight = 0, pSlur = 0.5f, pEven = 1, pSize = 1, pWolf = 0, pWolfHz = 175, pPos = 0, pMute = 0;
   float placePos = 0, specMute = 0;
@@ -1102,6 +1106,7 @@ void StringsVoice::setup(VoiceContext& ctx) {
   artGain = artPrev = 1;
   tremPh = 0.5f;   // the first stroke starts with the note (mid-stroke: no dip at the attack)
   tremLen = 1;
+  tremDir = 1;     // a down-bow
   tremLevel = tremNoise = 1;
   trng.seed(0x7e3017u + tremSeed * 2654435761u);
   slurArt = false;
@@ -1194,18 +1199,23 @@ void StringsVoice::step(VoiceContext& ctx) {
     else { w = 0; artT0 = -1; }
     artGain = std::exp2(-kSlurDb * pSlur * w * (1.f / 6.0206f));
   }
-  // tremolo: the bow changing direction (its phase counts strokes; a new stroke draws its length)
+  // tremolo: the bow changing direction (its phase counts strokes; a new stroke turns the bow round and
+  // draws its length and level)
   tremNoise = 1;
   if (art == kTrem && !released) {
-    tremPh += static_cast<float>(kGrid) / sr * pTremRate / tremLen;
+    const float strokeS = tremLen / pTremRate;
+    tremPh += static_cast<float>(kGrid) / sr / strokeS;
     if (tremPh >= 1) {
       tremPh -= 1;
+      tremDir = -tremDir;
       tremLen = 1 + kTremVary * trng.bipolar();
       tremLevel = dsp::dbToGain(kTremLevelDb * 1.7320508f * trng.bipolar());
     }
-    const float c = 0.5f + 0.5f * std::cos(dsp::kTwoPi * tremPh), c4 = (c * c) * (c * c);
-    artGain *= tremLevel * dsp::dbToGain(-kTremDipDb * c4);
-    tremNoise = dsp::dbToGain(kTremNoiseDb * c4);
+    // the change: a raised cosine kTremChangeS wide around each turn of the bow
+    const float u = std::min(tremPh, 1 - tremPh) * strokeS;
+    const float w = u < 0.5f * kTremChangeS ? 0.5f + 0.5f * std::cos(dsp::kTwoPi * u / kTremChangeS) : 0.f;
+    artGain *= tremLevel * dsp::dbToGain(-kTremDipDb * w);
+    tremNoise = dsp::dbToGain(kTremNoiseDb * w);
   }
   // the wolf: near its note the tone stutters
   if (pWolf > 0 && bankOn && !released) {
@@ -1265,7 +1275,7 @@ void StringsVoice::step(VoiceContext& ctx) {
   // the onset recording follows the pitch too (a bend, a slur or vibrato during it)
   step_ = stepBase * (f / hzOnset);
   // the dynamic: the velocity's, or the Dynamics control's as it moves
-  if (!released) dyn = sustainDyn();
+  if (!released) dyn = sustainDyn() + (art == kTrem ? kTremDyn * tremDir : 0.f);
   // the body and corrections follow the pitch (past 3 cents: their detail is 50), the dynamic and Body.
   // Before the rotations are set: a pitch falling past kFMax / K adds a harmonic, which must turn
   // at its own frequency from this step on.

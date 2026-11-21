@@ -84,7 +84,8 @@ from CI at milestones.
   only as long as its file runs (some end mid-ring); a stroke's own per-harmonic release made its tail
   right, but never let it be slower than the pooled one (half-second fits of a low fundamental ring on:
   stress found it); a long stroke must fade as its take did until its bow-off; notes started together
-  share a tremolo (one bow). Adding a parameter reshuffles the check's random patches: a new warning
+  share a tremolo (one bow). Owner's ears on tremolo: a real one is smooth, two slightly distinct sounds
+  (down- and up-bow) with a brief, light change; a deep dip at each change sounded unbowed. Adding a parameter reshuffles the check's random patches: a new warning
   there may be an old bug (one found a plucked note at +718 dB: the mode rotation's series, past a wide
   bend; to see a hot patch, make the kit's check save it in a local, uncommitted edit). Pizzicato is its own data (`tools/pizz.py` → `src/PizzData.h` via
   `tools/make_pizz_header.py`; never edit by hand): the pluck as recorded (0.22 s, hand-off 0.15-0.21 s),
