@@ -55,6 +55,15 @@ zips at milestones.
 Playing comes before calibration: the cello is complete enough to use, and what a player meets in a
 DAW should decide where calibration effort goes.
 
+**Progress (2026-11-21)**: 1 done (#14); 2 waiting on the owner (the session can't push tags: tag
+`v0.1` on `1b17203`, main after #12); 3: up-bow onsets done (#15), the node notch and the room's feed
+as listening files for the owner (the room's feed: the room is 12 dB under the dry sound, so feeding
+it darker moves the balance under 0.1 dB, and a gently farther mic moves the 1-2.5 kHz edge 0.4 dB;
+not worth an engine change unless the owner hears otherwise), the dynamic range a question for the
+owner; 4 done (#16: left out, a note plays 29 % from its recording against 2.9 measured and 40 for a
+transposed neighbour; its onset is the largest part). Next: 5, listening in phrases, with the onset
+between the notes as the first thing to listen for.
+
 1. **A regression check** (`tools/regress.py`): runs every measure (`measure.py`, `handoff.py`,
    `life.py --render`, `measure_pizz.py`, `measure_stacc.py`, `measure_trem.py`) and compares their
    summary numbers with `tools/baseline.json`, within tolerances. One command after any change to the
