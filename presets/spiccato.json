@@ -1,0 +1,13 @@
+{
+  "synthkit": 1,
+  "synth": "strings",
+  "patchVersion": 1,
+  "name": "Spiccato",
+  "tags": [
+    "spiccato"
+  ],
+  "params": {
+    "play.articulation": 3,
+    "space.room": 30
+  }
+}

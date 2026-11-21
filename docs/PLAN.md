@@ -20,8 +20,9 @@ grows past what loads comfortably, split them into two builds of the same source
 
 ## Where it stands (2026-11-20)
 
-The cello is playable and was judged by ear at every step (Phases 0-3, PRs #1-#8, all merged). 3b has
-begun: the Articulation choice, keyswitches and pizzicato (PR #10, for the owner's ears).
+The cello is playable and was judged by ear at every step (Phases 0-3, PRs #1-#11, all merged). 3b's
+articulations are built: pizzicato (PR #10, merged), then staccato, spiccato, tremolo and harmonics
+(PR #12, for the owner's ears). Next: Phase 4, calibration and a `v0.1` release.
 `docs/MODEL.md` is the reference for how everything works and why; `CLAUDE.md` has the rules, the
 lessons and the checks to run.
 
@@ -49,7 +50,7 @@ answer. The owner tests each PR on its Pages preview and installs plugin zips at
 
 ## What's left
 
-### 3b: articulations (in progress)
+### 3b: articulations (done, PR #12 for the owner's ears)
 
 bigcat has more for this than the first plan assumed (`docs/PHASE0.md`): **pizzicato** (13 notes × 4
 round robins, 0.75-7 s, decaying 12-45 dB/s), **staccato** (the 17 notes × 4 dynamics × 4 round
@@ -63,6 +64,11 @@ most of 3b can be measured.
   them). Not a modulation destination: voices read it as they start, through `processEvents`. Left
   from the pizzicato: above C5 (C5's pluck transposed), a pluck position, the recordings' louder open
   strings.
+- **Done (PR #12)**: staccato (measured: each take's own stroke, bow-off and release; 23.5 % from its
+  recordings, another take 26.1), spiccato (a judgment from the staccatos), tremolo (a judgment;
+  notes started together share one bow), natural and artificial harmonics (measured from the slides),
+  keyswitches D1, E1, G1, A1, Tremolo Rate; and a fix for a plucked note far from its pitch, which blew
+  up (docs/MODEL.md). Not done: col legno (the knocks), the seagull effect between harmonic nodes.
 - **Choosing an articulation** (as first planned): an Articulation choice (Arco, Staccato, Spiccato, Pizzicato,
   Tremolo, Harmonics), modulatable, and **keyswitches** (low keys below the cello's range, swallowed
   in `processEvents`, which moves the choice with `ctx.setParam`: API.md §4a; check the page's
@@ -153,8 +159,8 @@ double-slip. An experiment: kept only if it wins somewhere.
    build-rel`, then `./build-rel/strings_render --check . --out /tmp/renders` and `python3 -I
    tools/measure.py ../bigcat build-rel/strings_render` (4.2 %, timbre 3.0): if those match, the
    workspace is right.
-3. Read `docs/MODEL.md` for the engine, then start on 3b above, on a branch, with a PR when it's ready
-   for the owner's ears.
+3. Read `docs/MODEL.md` for the engine, then start on Phase 4 above, on a branch, with a PR when it's
+   ready for the owner's ears.
 
 ## The model
 
@@ -202,8 +208,8 @@ decaying partials. The rest of the piano's pipeline carries over.
    - **3a, playing** (done; `docs/MODEL.md`: Playing): continuous dynamics, vibrato (with the body's
      fine detail it sweeps through, measured from the bow's wander), legato and portamento, one note
      per string, Slur, Even Notes, Bow Weight.
-   - **3b, articulations** (in progress: What's left, above): pizzicato (done), staccato, spiccato,
-     tremolo, natural harmonics.
+   - **3b, articulations** (done: docs/MODEL.md): pizzicato, staccato, spiccato, tremolo, natural and
+     artificial harmonics.
    - **3c, bow colour** (done): pressure (Bow Weight, in 3a), position (tasto … ponticello), the mute.
    - **3d, body and room** (done): a room (synthkit's reverb, from the piano), sympathetic strings,
      body size, a wolf tone.
