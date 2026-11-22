@@ -118,15 +118,22 @@ python3 -I tools/measure_upbow.py ../bigcat build-rel/strings_render            
 - **Which take**: the up-bow takes dip more than the down-bow ones (`tools/onset_choice.py`'s test):
   one falling more than 5.5 dB plays the same note's up-bow take one dynamic away if that falls less
   than 4, else the cell plays its down-bow onset for either bow (further away, a p note would start
-  with an f attack). 48 of 68 cells have one, from 38 takes (1.3 MB of samples); none at A5, and few
-  at p above F#4.
+  with an f attack). 48 of 68 cells have one (none at A5, few at p above F#4); a take lent to a
+  neighbouring dynamic is stored again, levelled for that cell: 48 takes, 1.6 MB of samples.
+- **Levelled attacks** (a judgment, from the owner's ears): this cellist's up-bows start louder
+  against their steady level than the down-bows (the first 0.2 s, 2.6 dB median; C3 mf 7 dB), and in
+  repeated notes each turn to an up-bow sounded spiky. `tools/upbow.py` brings each up-bow take's
+  attack (0-0.2 s rms against its steady level) down by one gain to the down-bow onset the same cell
+  plays plus 1 dB (a slight lift, so the directions still differ), never raising it, tapering to
+  nothing by 0.30 s (the hand-off is unchanged): cuts of 1.5 dB median, at most 10.7. Played, an
+  up-bow's attack now stands +0.3 dB over the down-bow's (median over every other semitone at p, mf,
+  f; at most +1.9, was +7). Matching the level window by window, the first try, overshot (the up-bows
+  came out under the down-bows where their attacks rise at another moment); levelling a lent take
+  against its own dynamic's down-bow, not the cell's, left F#3 p and D#4 p 7 dB loud.
 - **How close** (`tools/measure_upbow.py`: each cell as a second bow, Even Notes off, against its
-  up-bow recording): **8.0 %** median (timbre 5.8), against 18.7 % (16.5) for the down-bow onset there,
-  which is what an up-bow played before; hand-off extra dip −0.1 dB median (worst −2.7, D#3 mp).
-- **Louder starts**: this cellist's up-bows start louder against their steady level than the
-  down-bows (the first 0.2 s, 2.6 dB median; C3 mf 7 dB), and the engine keeps that: alternating
-  notes can sound like an accent on every up-bow. A judgment for the owner's ears; levelling the
-  up-bow attack to the down-bow's is a small change.
+  up-bow recording): **9.9 %** median (timbre 6.2), against 18.7 % (16.5) for the down-bow onset there,
+  which is what an up-bow played before (8.0 before the levelling, which moves the attacks off their
+  recordings on purpose); hand-off extra dip −0.4 dB median (worst −2.7, D#3 mp).
 
 ### Source × body
 

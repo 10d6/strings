@@ -57,7 +57,8 @@ from CI at milestones.
   detail read every step (narrow resonances: what makes vibrato sound like one), octave-band bow noise
   pulsing at the string's period, and a release from the staccatos. With Bowing at Alternate (default) every other bow starts from the cell's
   up-bow take (`tools/upbow.py` → `src/UpbowData.h`; `processEvents` turns the bow once a block, records
-  `noteUp`; after a change, `tools/measure_upbow.py`: 8.0 % against the up-bow recordings). Phase 3a added continuous
+  `noteUp`; after a change, `tools/measure_upbow.py`: 9.9 % against the up-bow recordings; their attacks are levelled
+  to the down-bow's + 1 dB, the owner heard them spiky). Phase 3a added continuous
   dynamics (Velocity or Controller), vibrato, legato slurs and One Note Each (docs/MODEL.md: Playing);
   3d a room (synthkit's `dsp::Reverb`, the piano's, API.md §8b), Hall at 25 % by default, sympathetic
   open strings (a bank driven by the dry sound; the voices report their string, `stopMask`), Body Size
