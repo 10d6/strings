@@ -448,15 +448,17 @@ pressure is Bow Weight (Phase 3a).
   - the **source** moves along the recordings' own dynamics, a layer per 100 % (brighter towards the
     bridge, darker towards the fingerboard). The source alone: the measured notes' corrections carry
     each take's quirks (moving them too, sul tasto took 12.5 dB off C3's fundamental: its mp take's);
-  - the partials with a **node at the bowing point** are weakened, to 0.3 at the node (the bow hair's
-    width fills the rest), the more the further from normal;
+  - the partials with a **node at the bowing point** are left alone. Phase 3c weakened them (to 0.3
+    at the node), as a plucked string would; in bowing they aren't removed, the bowing point shows
+    as ripples instead (instrument-research KB §1.1). The owner preferred sul ponticello without the
+    notch and heard no difference on sul tasto (Phase 4), so it went;
   - past what the dynamics reach, a **tilt**: near the bridge the fundamental 6 dB weaker and the
     partials above the 4th +6 dB per octave (glassy, whistling); over the fingerboard −5 dB per octave
     above the 3rd (soft);
   - the **bow noise** grows at both ends (+8 dB at the bridge with a harder pulse, scratchy; +6 dB over
     the fingerboard with less of it, airy: flautando).
-  On C3 at mf: spectral centroid 443 Hz normal, 318 at −100 %, 902 at +50 %, 2067 at +100 %; the
-  level stays. Presets *Sul Tasto* (−70 %) and *Sul Ponticello* (+70 %).
+  On C3 at mf (spectral centroid 1-2.5 s into a dry render): 417 Hz normal, 288 at −100 %, 836 at
+  +50 %, 1646 at +100 %; the level stays (within 0.2 dB). Presets *Sul Tasto* (−70 %) and *Sul Ponticello* (+70 %).
 - **Mute** (0-100 %). Measured on violins (Acta Acustica 2025): every mute dips the bridge's
   resonance region ("bridge hill"), a heavy practice mute deeper and wider, and heavy mutes take the
   lows and much of the loudness too. Here: a dip around 1.8 kHz (0.8 octave wide, up to 12 dB), a

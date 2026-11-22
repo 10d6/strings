@@ -115,12 +115,13 @@ constexpr float kWolfWidthC = 35, kWolfDb = 14, kWolfHz = 7;
 // point β (a share of the string from the bridge) goes from 1/4 (sul tasto, −100 %) through 1/10
 // (normal) to 1/40 (sul ponticello, +100 %). Players slow the bow and press harder near the bridge,
 // which is most of its brilliance: the source moves along the recordings' own dynamics by
-// kPosLayers. The partials with a node at the bowing point are weakened (to kPosNodeFloor, the bow's
-// width filling the rest), the more the further from normal. Past what the dynamics reach, a tilt:
+// kPosLayers. The partials with a node at the bowing point are left as they are: in bowing, unlike
+// plucking, they aren't removed (instrument-research KB §1.1; the owner preferred sul ponticello
+// without the notch Phase 3c had, and heard no difference on sul tasto). Past what the dynamics
+// reach, a tilt:
 // glassy near the bridge (the fundamental weaker, the upper partials stronger), soft over the
 // fingerboard; and the bow noise grows at both ends, scratchy at the bridge, airy over the fingerboard.
-constexpr float kPosLayers = 1.0f, kPosNodeFloor = 0.3f;
-constexpr float kPosBeta0 = 0.1f, kPosBridge = 4.f, kPosTasto = 2.5f;
+constexpr float kPosLayers = 1.0f;
 constexpr float kPosNoiseBridgeDb = 8, kPosNoiseTastoDb = 6;
 // The mute (a judgment, from measurements of violin mutes: every mute dips the bridge's resonance
 // region, a heavy one deeper and wider, and takes the lows and the loudness too). 50 % is about a
@@ -854,18 +855,13 @@ void StringsVoice::setRotation(float hz) {
 // through the note (the velocity then sets only the onset: how hard the bow catches).
 float StringsVoice::sustainDyn() const { return pDynCtl ? pDyn : velDyn; }
 
-// Bow Position's change to the source at harmonic n (dB): the bowing point's nodes and the tilt past
-// what the dynamics give.
+// Bow Position's change to the source at harmonic n (dB): the tilt past what the dynamics give.
 float StringsVoice::posDb(int n) const {
   if (pPos == 0) return 0;
-  const float a = std::fabs(pPos);
-  const float beta = kPosBeta0 * std::pow(pPos > 0 ? kPosBridge : kPosTasto, -pPos);
-  const float sn = std::sin(dsp::kPi * n * beta);
-  const float node = 10.f * std::log10(kPosNodeFloor * kPosNodeFloor + (1 - kPosNodeFloor * kPosNodeFloor) * sn * sn);
   const float l = std::log2(static_cast<float>(n));
-  float tilt = pPos > 0 ? pPos * (6.f * std::max(0.f, l - 2.f) - (n == 1 ? 6.f : 0.f))
-                        : pPos * 5.f * std::max(0.f, l - 1.585f);   // −5 dB per octave above the 3rd
-  return std::max(-30.f, a * node + tilt);
+  const float tilt = pPos > 0 ? pPos * (6.f * std::max(0.f, l - 2.f) - (n == 1 ? 6.f : 0.f))
+                              : pPos * 5.f * std::max(0.f, l - 1.585f);   // −5 dB per octave above the 3rd
+  return std::max(-30.f, tilt);
 }
 
 // The mute's change at frequency f (dB): a dip over the bridge's resonance region, a gentler cut above
