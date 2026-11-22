@@ -15,7 +15,7 @@ harmonic wandering, the bow noise pulsing with the string, all measured from the
 plays:
 - **Dynamics:** by velocity (p to f), or from the mod wheel or expression pedal, moving during a note.
 - **Vibrato:** it sweeps the harmonics through the body's narrow resonances.
-- **Legato:** slurs and portamento.
+- **Legato:** slurs and portamento; bows that alternate, each up-bow starting from its own recording.
 - **Strings:** one note per string, as on the cello.
 - **A room** around it (Hall by default; Room, Chamber, Cathedral, Plate), the same reverb as Piano's.
 - **The instrument:** open strings ringing along, the body's size, and a wolf note if you want one.
@@ -55,6 +55,10 @@ python3 -I tools/staccato.py ../bigcat tools/stacc.json tools/stacc_onsets.npz
 python3 -I tools/make_stacc_header.py tools/stacc.json tools/stacc_onsets.npz src/StaccData.h
 python3 -I tools/measure_stacc.py ../bigcat build/strings_render # every kept staccato take against its recording
 python3 -I tools/touch.py ../bigcat src/TouchData.h
+# the up-bow onsets (src/UpbowData.h):
+python3 -I tools/upbow.py ../bigcat tools/upbow.json tools/upbow_onsets.npz
+python3 -I tools/make_upbow_header.py tools/upbow.json tools/upbow_onsets.npz src/UpbowData.h
+python3 -I tools/measure_upbow.py ../bigcat build/strings_render   # each up-bow against its recording
 ```
 
 The noise and the movement are calibrated against the recordings (`tools/calibrate_noise.py`,
@@ -88,7 +92,7 @@ The browser page and the plugins are built the same way as in synthkit: see
 | | |
 |---|---|
 | `synth.json` | identity (name, IDs, plugin codes) and kit features |
-| `src/` | the sound engine (`Synth.cpp`) and the measured data (`CelloData.h`, `PizzData.h`, `StaccData.h`, `TouchData.h`, generated) |
+| `src/` | the sound engine (`Synth.cpp`) and the measured data (`CelloData.h`, `UpbowData.h`, `PizzData.h`, `StaccData.h`, `TouchData.h`, generated) |
 | `docs/` | the plan, how it's modelled, the recordings, Phase 0's experiments |
 | `tools/` | measuring the recordings, generating the header, comparing renders with the recordings |
 | `presets/` | factory presets (`init.json` is what a new instance starts on) |

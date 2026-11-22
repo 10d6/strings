@@ -17,12 +17,15 @@
 #include "PizzData.h"
 #include "StaccData.h"
 #include "TouchData.h"
+#include "UpbowData.h"
 
 using namespace sk;
 namespace cd = cello_data;
 namespace pd = pizz_data;
 namespace sd = stacc_data;
 static_assert(sd::kNotes == cd::kNotes, "the staccatos are measured at the sustains' notes");
+static_assert(upbow_data::kNotes == cd::kNotes && upbow_data::kOnsetRate == cd::kOnsetRate,
+              "the up-bow onsets are measured at the sustains' notes and rate");
 
 namespace {
 
@@ -504,6 +507,7 @@ struct StringsVoice : Voice {
 
   // the articulation this note plays (read as it starts), and the next one's (a string played again)
   int art = kArco, nextArt = kArco, rrSel = 0, nextRR = 0;
+  bool upBow = false, nextUpBow = false;   // this bow starts up (Bowing: Alternate), from the up-bow take
   float energy = 0;
   float vibratoC(double midi);        // this step's vibrato (cents)
   int arcoRun(VoiceContext& ctx, Buffer& out, int i, int n);
@@ -532,10 +536,14 @@ struct Strings : Synth {
   Param dynamics, dynMode, strings, vibDepth, vibRate, vibDelay, vibAttack, vibVary, weight, slur, even;
   Param glide, voiceMode;
   Param room, spaceType, spaceDecay, spaceSize, spacePredelay, spaceDamping, spaceEarly, spaceLowCut, spaceHighCut;
-  Param resonance, a4, bodySize, wolf, wolfNote, bowPos, mute, articulation, tremRate;
+  Param resonance, a4, bodySize, wolf, wolfNote, bowPos, mute, articulation, tremRate, bowing;
   // per key, set in processEvents as its note goes to the voices: the articulation it plays (the
   // choice at that moment, after any keyswitch before it), and for pizzicato its round robin
   int noteArt[128] = {}, noteRR[128] = {};
+  // and which way its bow goes (Bowing: Alternate turns the bow at each new bow; notes starting in the
+  // same block share one; a slur in Legato keeps it). The first bow is a down-bow.
+  bool noteUp[128] = {}, bowUp = true, keyDown[128] = {};
+  unsigned bowBlock = ~0u;
   unsigned char rrNext[128] = {};
   // blocks seen: notes starting in the same block share a tremolo (one bow across a double stop)
   unsigned blocks = 0;
@@ -566,6 +574,7 @@ struct Strings : Synth {
     articulation = b.add("play.articulation").name("Articulation")
                        .choices({"Arco", "Pizzicato", "Staccato", "Spiccato", "Tremolo", "Harmonics"});
     tremRate = b.add("play.tremRate").name("Tremolo Rate").range(6, 20).def(12).unit("Hz").modulatable();
+    bowing = b.add("play.bowing").name("Bowing").choices({"Down Bows", "Alternate"}).def(1);
     dynMode = b.add("play.dynMode").name("Dynamics From").choices({"Velocity", "Controller"});
     dynamics = b.add("play.dynamics").name("Dynamics").range(0, 100).def(67).unit("%").smoothing(30)
                    .modulatable().cc(1).cc(11);
@@ -690,6 +699,7 @@ struct Strings : Synth {
     // other note takes the articulation chosen when it arrives
     ++blocks;
     int cur = ctx.choice(articulation);
+    const bool alternate = ctx.choice(bowing) == 1;
     for (auto& e : ctx.in()) {
       if (e.isNoteOn() || e.isNoteOff()) {
         const int ks = keyswitchArt(e.note);
@@ -700,10 +710,22 @@ struct Strings : Synth {
           }
           continue;
         }
+        const int key = e.note & 127;
         if (e.isNoteOn()) {
-          const int key = e.note & 127;
           noteArt[key] = cur;
           noteRR[key] = rrNext[key]++;   // each key its own round robins (each articulation takes its count)
+          // a new bow turns it (once a block: a chord is one bow), unless the kit's legato slurs to it
+          bool anyHeld = false;
+          for (bool k : keyDown) anyHeld |= k;
+          const bool slurs = ctx.choice(voiceMode) == 1 && anyHeld;
+          if (alternate && !slurs && bowBlock != blocks) {
+            bowUp = !bowUp;
+            bowBlock = blocks;
+          }
+          noteUp[key] = alternate && bowUp;
+          keyDown[key] = true;
+        } else {
+          keyDown[key] = false;
         }
       }
       ctx.out(e);
@@ -801,6 +823,7 @@ void StringsVoice::start(const NoteOn& n, const StartInfo& s) {
   const int str = synth.allocString;
   const bool held = alive && !releasing && !restart;
   const int a = synth.noteArt[n.note & 127], rr = synth.noteRR[n.note & 127];
+  const bool up = synth.noteUp[n.note & 127];
   // a pizzicato is plucked again whatever the voice mode (a bowed note slurs only into a bowed note)
   const bool slur = (a == kArco || a == kTrem) && (!alive || art == a);
   if (slur && (s.legato || (s.sounding && str >= 0 && held))) {
@@ -822,6 +845,7 @@ void StringsVoice::start(const NoteOn& n, const StartInfo& s) {
     nextVel = n.vel;
     nextArt = a;
     nextRR = rr;
+    nextUpBow = up;
     nextTremSeed = synth.blocks;
     for (int j = 0; j < 3; ++j) nextSeeds[j] = seeds[j];
     releasing = false;
@@ -830,6 +854,7 @@ void StringsVoice::start(const NoteOn& n, const StartInfo& s) {
   vel = n.vel;
   art = a;
   rrSel = rr;
+  upBow = up;
   tremSeed = synth.blocks;
   seedNoise = seeds[0]; seedWander = seeds[1]; seedVib = seeds[2];
   pending = true;
@@ -1043,19 +1068,23 @@ void StringsVoice::setup(VoiceContext& ctx) {
   int on = tn < 0.5f ? lo : lo + 1;
   if (midi <= cd::noteMidi[0]) on = 0;
   if (midi >= cd::noteMidi[cd::kNotes - 1]) on = cd::kNotes - 1;
-  int od = cd::onsetDyn[on][std::min(cd::kDyns - 1, static_cast<int>(velDyn + 0.5f))];
-  onset = cd::onset[on * cd::kDyns + od];
+  const int vd = std::min(cd::kDyns - 1, static_cast<int>(velDyn + 0.5f));
+  int od = cd::onsetDyn[on][vd];
+  // an up-bow (Bowing: Alternate) starts from the cell's up-bow take, where it has a steady one
+  // (tools/upbow.py); its sustain is the cell's own, as the down-bow's is
+  const int ut = upBow && art == kArco ? upbow_data::take[on][vd] : -1;
+  onset = ut >= 0 ? upbow_data::onset[ut] : cd::onset[on * cd::kDyns + od];
   onsetLen = cd::kOnsetLen;
   bowOff = -1;
   strokeFade = 0;
-  float ratio = hz / cd::handF0[on][od];
+  float ratio = hz / (ut >= 0 ? upbow_data::handF0[ut] : cd::handF0[on][od]);
   stepBase = step_ = ratio * cd::kOnsetRate / sr;
   hzOnset = hz;
   pos = 0;
   // the onset plays at the velocity's level (the sustain may be at another: Dynamics From Controller)
   float onsetLevel = levelAt(lo, tn, velDyn);
-  float cellDb = onsetLevel - cd::level[on][od];
-  onsetGain = dsp::dbToGain(cellDb) * cd::kOnsetScale;
+  float cellDb = onsetLevel - (ut >= 0 ? upbow_data::level[ut] : cd::level[on][od]);
+  onsetGain = dsp::dbToGain(cellDb) * (ut >= 0 ? upbow_data::kOnsetScale : cd::kOnsetScale);
   onsetRel = 1;
   onsetRelMul = dsp::dbToGain(-kOnsetReleaseDbS / sr);
   tX0 = static_cast<long>(cd::kTOn * cd::kOnsetRate / step_);
@@ -1068,8 +1097,13 @@ void StringsVoice::setup(VoiceContext& ctx) {
   // the onset's harmonics at the hand-off, which the bank starts from
   float hg = dsp::dbToGain(cellDb);
   for (int k = 0; k < K; ++k) {
-    hand[k] = k < cd::handCount[on][od] ? hg * dsp::dbToGain(0.01f * cd::handDb[on][od][k]) : 0.f;
-    handPh[k] = cd::handPh[on][od][k] * (dsp::kPi / 128.f);
+    if (ut >= 0) {
+      hand[k] = k < upbow_data::handCount[ut] ? hg * dsp::dbToGain(0.01f * upbow_data::handDb[ut][k]) : 0.f;
+      handPh[k] = upbow_data::handPh[ut][k] * (dsp::kPi / 128.f);
+    } else {
+      hand[k] = k < cd::handCount[on][od] ? hg * dsp::dbToGain(0.01f * cd::handDb[on][od][k]) : 0.f;
+      handPh[k] = cd::handPh[on][od][k] * (dsp::kPi / 128.f);
+    }
     gain[k] = 1;
     flick[k] = 1;
   }
@@ -1117,7 +1151,9 @@ void StringsVoice::setup(VoiceContext& ctx) {
   pitchC = levelDb = 0;
 
   for (int b = 0; b < cd::kBands; ++b) {
-    grainPh[b] = cd::grainPhase[on][od][b];
+    // the noise's pulse peaks where the down-bow's does; an up-bow's half a period away (the bow
+    // reversed mirrors the string's motion: measured 171 degrees apart, median)
+    grainPh[b] = cd::grainPhase[on][od][b] + (ut >= 0 ? dsp::kPi : 0.f);
     for (auto& f : bp[b]) f.reset();
   }
   grainAmount = -1;
@@ -1551,6 +1587,7 @@ void StringsVoice::render(VoiceContext& ctx, Buffer& out) {
       vel = nextVel;
       art = nextArt;
       rrSel = nextRR;
+      upBow = nextUpBow;
       tremSeed = nextTremSeed;
       seedNoise = nextSeeds[0]; seedWander = nextSeeds[1]; seedVib = nextSeeds[2];
       released = false;

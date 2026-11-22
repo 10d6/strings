@@ -97,6 +97,44 @@ nearest dynamic falling less than 4: A2 p (7.1 dB) plays mp's, F#4 mf (7.1) f's,
 C6 f (6.3) mf's, each at the cell's own level. The onset's patterns of movement and hand-off go with
 the take; the sustain is the cell's own.
 
+### Up-bow onsets (`tools/upbow.py`, `src/UpbowData.h`)
+
+bigcat bows every sustain both ways; until Phase 4 only the down-bow onsets shipped, so repeated notes
+all started from the same recording. **Bowing** (Down Bows, Alternate; default Alternate) turns the bow
+at each new bow, as a player does: `processEvents` flips the direction once per block that starts a
+note (a chord is one bow), not for a note the kit's Legato slurs to (a key held), and records it per
+key (`noteUp`) for `start`. The first bow is a down-bow. An up-bow arco note starts from its cell's
+up-bow take (its first 0.4 s, and its harmonics' levels and phases at the hand-off, measured as the
+down-bow onsets are), played at the cell's level; the sustain after the hand-off is the cell's own,
+and the noise's pulse peaks half a period from the down-bow's (measured 171° apart). Strokes,
+tremolo and harmonics have their own data and ignore it.
+
+```
+python3 -I tools/upbow.py ../bigcat tools/upbow.json tools/upbow_onsets.npz                # ~2 min
+python3 -I tools/make_upbow_header.py tools/upbow.json tools/upbow_onsets.npz src/UpbowData.h
+python3 -I tools/measure_upbow.py ../bigcat build-rel/strings_render                      # ~1 min
+```
+
+- **Which take**: the up-bow takes dip more than the down-bow ones (`tools/onset_choice.py`'s test):
+  one falling more than 5.5 dB plays the same note's up-bow take one dynamic away if that falls less
+  than 4, else the cell plays its down-bow onset for either bow (further away, a p note would start
+  with an f attack). 48 of 68 cells have one (none at A5, few at p above F#4); a take lent to a
+  neighbouring dynamic is stored again, levelled for that cell: 48 takes, 1.6 MB of samples.
+- **Levelled attacks** (a judgment, from the owner's ears): this cellist's up-bows start louder
+  against their steady level than the down-bows (the first 0.2 s, 2.6 dB median; C3 mf 7 dB), and in
+  repeated notes each turn to an up-bow sounded spiky. `tools/upbow.py` brings each up-bow take's
+  attack (0-0.2 s rms against its steady level) down by one gain to the down-bow onset the same cell
+  plays plus 1 dB (a slight lift, so the directions still differ), never raising it, tapering to
+  nothing by 0.30 s (the hand-off is unchanged): cuts of 1.5 dB median, at most 10.7. Played, an
+  up-bow's attack now stands +0.3 dB over the down-bow's (median over every other semitone at p, mf,
+  f; at most +1.9, was +7). Matching the level window by window, the first try, overshot (the up-bows
+  came out under the down-bows where their attacks rise at another moment); levelling a lent take
+  against its own dynamic's down-bow, not the cell's, left F#3 p and D#4 p 7 dB loud.
+- **How close** (`tools/measure_upbow.py`: each cell as a second bow, Even Notes off, against its
+  up-bow recording): **9.9 %** median (timbre 6.2), against 18.7 % (16.5) for the down-bow onset there,
+  which is what an up-bow played before (8.0 before the levelling, which moves the attacks off their
+  recordings on purpose); hand-off extra dip −0.4 dB median (worst −2.7, D#3 mp).
+
 ### Source × body
 
 Each sustain's steady harmonic levels are fitted as one level per file, plus the bowed string's
@@ -686,6 +724,7 @@ recorded). Ranges and sizes are judgments.
 | Vary | `vib.vary` | 40 % (0-100) | how much its rate and depth wander |
 | Slur | `play.slur` | 50 % (0-100) | a slur's dip and its vibrato starting again |
 | Even Notes | `play.even` | 100 % (0-100) | the notes' levels from a smooth curve; 0 as recorded |
+| Bowing | `play.bowing` | Alternate | each new bow turns (up-bow onsets); Down Bows: every note down |
 | Bow Weight | `bow.weight` | 0 % (−100…+100) | a lighter (sweeter) or heavier (brighter) bow's spectrum, same level |
 | Voice Mode, Glide | kit | Poly, 40 ms | Legato slurs; Mono bows each note again |
 | Reverb, Space, Decay, Size, Pre-delay, Damping, Early, Low Cut, High Cut | `space.*` | 25 %, Hall | the room (above); the piano's controls |
@@ -812,5 +851,6 @@ time with `-DCMAKE_BUILD_TYPE=Release`.
 - A slur's own sound (the finger, the bow's change as the string shortens); the kit's glide is a
   constant time whatever the interval.
 - The movement per dynamic (pooled), and its course through a long note (one steady process).
-- The up-bow recordings (only the down-bow onsets are kept: alternating bows is a later choice).
+- The up-bow recordings' sustains (an up-bow's onset is its own; its sustain is the cell's, fitted
+  over both bows).
 - Below C2 and above C6 the nearest note's onset is transposed further; nothing stops playing there.
