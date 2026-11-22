@@ -60,7 +60,8 @@ DAW should decide where calibration effort goes.
 up-bows' attacks are levelled to the down-bows' + 1 dB), the node notch removed (the owner preferred
 sul ponticello without it, heard no difference on sul tasto), the room's feed left as it is (the room
 is 12 dB under the dry sound, so feeding it darker moves the balance under 0.1 dB, and a gently
-farther mic moves the 1-2.5 kHz edge 0.4 dB), the dynamic range still a question for the owner; 4 done
+farther mic moves the 1-2.5 kHz edge 0.4 dB), the dynamic range left as recorded (the owner, for
+now); 4 done
 (#16: left out, a note plays 29 % from its recording against 2.9 measured and 40 for a transposed
 neighbour; its onset is the largest part). Next: 5, listening in phrases, with the onset between the
 notes as the first thing to listen for.
@@ -78,10 +79,10 @@ notes as the first thing to listen for.
    - **Up-bow onsets.** Only the down-bow onsets ship, so a repeated note plays the same attack every
      time. bigcat has every note and dynamic bowed both ways: alternate them (as the staccato already
      does), at the cost of the page's size (measure it first).
-   - **The dynamic range.** The recordings' p to f is 13 dB (median; 4-19 by note); measured violin
-     crescendos span 27-31 dB and pp-ff about 37-40 (KB §11.5, Demoucron). Ask the owner whether f
-     should stand further from p, and if so offer a range control (extrapolating along the measured
-     dynamics, as Bow Weight does).
+   - **The dynamic range** (left as recorded, the owner's choice for now). The recordings' p to f is
+     13 dB (median; 4-19 by note); measured violin crescendos span 27-31 dB and pp-ff about 37-40
+     (KB §11.5, Demoucron). If it comes back: a range control, extrapolating along the measured
+     dynamics, as Bow Weight does.
    - **Bow Position's node notch.** The engine weakens the partials with a node at the bowing point
      (`kPosNodeFloor`); in bowing, unlike plucking, they are not removed (KB §1.1, tagged from memory):
      the bowing point shows as ripples instead. A/B with and without the notch.
