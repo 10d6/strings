@@ -55,16 +55,15 @@ zips at milestones.
 Playing comes before calibration: the cello is complete enough to use, and what a player meets in a
 DAW should decide where calibration effort goes.
 
-**Progress (2026-11-22)**: 1 done (#14); 2 dropped (the owner doesn't need a tag); 3: up-bow onsets
-(#15: the owner found alternating bows considerably better, but the turns to an up-bow spiky, so the
-up-bows' attacks are levelled to the down-bows' + 1 dB), the node notch removed (the owner preferred
-sul ponticello without it, heard no difference on sul tasto), the room's feed left as it is (the room
-is 12 dB under the dry sound, so feeding it darker moves the balance under 0.1 dB, and a gently
-farther mic moves the 1-2.5 kHz edge 0.4 dB), the dynamic range left as recorded (the owner, for
-now); 4 done
-(#16: left out, a note plays 29 % from its recording against 2.9 measured and 40 for a transposed
-neighbour; its onset is the largest part). Next: 5, listening in phrases, with the onset between the
-notes as the first thing to listen for.
+**Done (2026-11-22)**: 1 the regression check (#14); 2 dropped (the owner doesn't need a tag); 3
+up-bow onsets (#15: alternating bows sounded considerably better; the turns to an up-bow were spiky,
+so their attacks are levelled to the down-bows' + 1 dB), the node notch removed (#17: the owner
+preferred sul ponticello without it), the room's feed left as it is (the room is 12 dB under the dry
+sound: feeding it darker moves the balance under 0.1 dB), the dynamic range left as recorded (the
+owner, for now); 4 leave one note out (#16: 29 % from its recording against 2.9 measured and 40 for a
+transposed neighbour); 5 phrases (chromatic scales at mf and p, slurred, a melody, swells on an
+in-between and a measured note): **nothing stood out** to the owner, so no judgment is revisited and
+the onset between the notes stays as it is; 6 no known gap was heard. Phase 4 is done; next, Phase 5.
 
 1. **A regression check** (`tools/regress.py`): runs every measure (`measure.py`, `handoff.py`,
    `life.py --render`, `measure_pizz.py`, `measure_stacc.py`, `measure_trem.py`) and compares their
@@ -196,8 +195,8 @@ decaying partials. The rest of the piano's pipeline carries over. `docs/MODEL.md
 1. **Analysis tools** (done: `docs/MODEL.md`).
 2. **Engine v1** (done): a living sustain, noise that pulses with the string, harmonics to 16 kHz.
 3. **Playability** (done): 3a playing, 3b articulations, 3c bow colour, 3d body and room.
-4. **Playing it, then calibrating**: regression check, `v0.1`, what a player hears first, leave one
-   note out, listening in phrases, known gaps, `v0.2`.
+4. **Playing it, then calibrating** (done): regression check, alternating bows, Bow Position without
+   the notch, leave one note out, listening in phrases.
 5. **Violin**: a spike first, then the same pipeline on VSCO's violin.
 6. **Experiment**: a waveguide model for transitions, offline and time-boxed, judged by ear.
 
