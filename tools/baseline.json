@@ -1,0 +1,41 @@
+{
+ "arco": {
+  "distance %": 4.2,
+  "distance attack %": 0.0,
+  "distance early %": 1.8,
+  "distance sustain %": 10.6,
+  "evenness max step dB": 3.2,
+  "evenness median step dB": 0.9,
+  "other bow %": 20.1,
+  "timbre %": 3.0
+ },
+ "handoff": {
+  "extra dip median dB": -0.2,
+  "extra dip worst dB": -3.4
+ },
+ "life": {
+  "harmonics correlation": 0.05,
+  "harmonics rms dB": 1.47,
+  "level rms dB": 0.83,
+  "patterns top-3 %": 75.0,
+  "pitch rms c": 1.09
+ },
+ "pizz": {
+  "distance %": 8.0,
+  "hand-off median dB": 1.0,
+  "other take %": 16.8
+ },
+ "stacc": {
+  "bow-off ms": -1.0,
+  "distance %": 23.4,
+  "other take %": 26.5,
+  "peak dB": -0.1
+ },
+ "trem": {
+  "dip dB": 8.2,
+  "lag-1": -0.26,
+  "lengths sd %": 12.9,
+  "rms vs held dB": 0.1,
+  "strokes/s": 11.6
+ }
+}
