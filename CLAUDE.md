@@ -35,8 +35,8 @@ from CI at milestones.
   the plan and its phases; `docs/SOURCES.md` the recordings and their licenses (keep attribution for
   any recorded audio that ships).
 - **Picking up the work**: `docs/PLAN.md` has where it stands, what the owner has decided, what's left
-  (Phase 4 next: a regression check, `v0.1`, the fixes a player hears first, then calibration; then
-  the violin, starting with a spike; a waveguide experiment), and `10d6/instrument-research` (a
+  (Phase 4 done; Phase 5 next: the violin, starting with a go/no-go spike; then a waveguide
+  experiment), and `10d6/instrument-research` (a
   knowledge base on bowed strings and CC0 measurements, cited as `KB §…`),
   and the steps for starting a new session (the recordings to clone, the check that the workspace
   reproduces today's numbers).
