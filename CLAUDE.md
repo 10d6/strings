@@ -75,6 +75,9 @@ from CI at milestones.
   `play.articulation=1…5`; Release 400 % needs `--tail 20`), and browser speed (`bench-web.cjs tests/four-strings.json`: 2.6-3.0× today with the room, 4.9× dry; a four-string tremolo 3.9×). The page is 15.5 MB. After changing the analysis or
   the engine's noise or movement, recalibrate (`calibrate_noise.py`, `calibrate_life.py`, then `calibrate_flicker.py`:
   docs/MODEL.md).
+- **Between the notes** (`tools/leave_one_out.py`, ~25 min, not in regress): a measured note left out of
+  the data plays 29 % from its recording (timbre; measured: 2.9; a neighbour's recording transposed: 40),
+  its onset (a neighbour's, 3 semitones off) and sustain (source × body alone) both far: docs/MODEL.md.
 - **Articulations** (3b, docs/MODEL.md: Pizzicato, Strokes, Tremolo, Harmonics): `play.articulation`
   (Arco, Pizzicato, Staccato, Spiccato, Tremolo, Harmonics: appended as they came, so patches keep their
   indices) and keyswitches (C1 D1 E1 F1 G1 A1 in that order of the keys: Arco, Staccato, Spiccato,
